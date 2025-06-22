@@ -1,6 +1,7 @@
 {
   "name": "kakeibo-app",
   "version": "0.1.0",
+  "homepage": "https://TakanoriHosoya.github.io/kakeibo-app",
   "private": true,
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
@@ -37,5 +38,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
