@@ -1,3 +1,6 @@
+/* =================================== */
+/* PC向けの基本スタイル */
+/* =================================== */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -6,7 +9,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f7f9;
-  color: #333;
+  color: #202124; /* Googleの標準テキスト色 */
   font-size: 16px;
 }
 
@@ -37,18 +40,19 @@ header h1 {
 }
 
 .login-button {
-  background-color: #4285F4;
+  background-color: #1a73e8;
   color: white;
   border: none;
   padding: 12px 24px;
   font-size: 16px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s;
+  font-weight: 500;
 }
 
 .login-button:hover {
-  background-color: #3367D6;
+  background-color: #1b66c9;
 }
 
 .logout-button {
@@ -72,45 +76,54 @@ header h1 {
 
 .entry-form, .records-section, .summary-section {
   background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
   margin-bottom: 30px;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #5f6368;
 }
 
 .form-group input, .form-group select {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
   box-sizing: border-box;
   font-size: 16px;
 }
 
-.entry-form button {
+.form-group input:focus, 
+.form-group select:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 1px #1a73e8;
+  outline: none;
+}
+
+.entry-form button[type="submit"] {
   width: 100%;
-  padding: 12px;
-  background-color: #2ecc71;
+  padding: 14px;
+  background-color: #1a73e8;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
-.entry-form button:hover {
-  background-color: #27ae60;
+.entry-form button[type="submit"]:hover {
+  background-color: #1b66c9;
 }
 
 .records-table {
@@ -122,25 +135,24 @@ header h1 {
 table {
   width: 100%;
   border-collapse: collapse;
-  white-space: nowrap;
 }
 
 th, td {
   text-align: left;
-  padding: 12px;
-  border-bottom: 1px solid #eee;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 th {
-  background-color: #f9f9f9;
-  font-weight: bold;
+  background-color: #f8f9fa;
+  font-weight: 500;
+  color: #5f6368;
 }
 
 tbody tr:hover {
-  background-color: #f1f1f1;
+  background-color: #f1f8ff;
 }
 
-/* --- ナビゲーションメニュー --- */
 .main-nav {
   display: flex;
   justify-content: center;
@@ -154,53 +166,22 @@ tbody tr:hover {
   padding: 15px 20px;
   font-size: 16px;
   cursor: pointer;
-  color: #555;
+  color: #5f6368;
   border-bottom: 3px solid transparent;
   transition: color 0.2s, border-bottom-color 0.2s;
+  font-weight: 500;
 }
 
 .main-nav button:hover {
-  color: #000;
+  color: #202124;
 }
 
 .main-nav button.active {
-  color: #2980b9;
-  border-bottom-color: #2980b9;
-  font-weight: bold;
+  color: #1967d2;
+  border-bottom-color: #1967d2;
+  font-weight: 500;
 }
 
-/* --- 集計セクション --- */
-.summary-section {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 30px;
-}
-
-.summary-section h3 {
-  margin-top: 0;
-  text-align: center;
-}
-
-.summary-table {
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.summary-table table {
-  width: 100%;
-}
-.summary-table td {
-  padding: 10px;
-}
-.summary-table .summary-total {
-  border-top: 2px solid #333;
-  font-size: 1.1em;
-}
-
-/* 月ナビゲーション */
 .month-navigator {
   display: flex;
   justify-content: space-between;
@@ -212,189 +193,149 @@ tbody tr:hover {
 .month-navigator h3 {
   margin: 0;
   font-size: 1.2em;
-  color: #333;
+  color: #202124;
   white-space: nowrap;
 }
 
 .month-navigator button {
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 8px 12px;
+  background-color: #f1f3f4;
+  border: 1px solid #f1f3f4;
+  border-radius: 8px;
+  padding: 8px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .month-navigator button:hover {
-  background-color: #e0e0e0;
+  background-color: #e8eaed;
 }
 
 .month-navigator button:disabled {
-  background-color: #f8f8f8;
-  color: #ccc;
+  background-color: #f8f9fa;
+  color: #bdc1c6;
   cursor: not-allowed;
 }
 
-/* 履歴テーブルの操作ボタン */
 .action-button {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2em;
-  padding: 4px 8px;
-  transition: transform 0.2s;
+  font-size: 1.5em;
+  padding: 8px;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.2s;
 }
 
 .action-button:hover {
-  transform: scale(1.2);
+  background-color: rgba(0,0,0,0.05);
 }
 
-.edit-button, .save-button {
-  color: #2980b9;
-}
-
-.delete-button, .cancel-button {
-  color: #c0392b;
-}
-
-/* 編集中行のスタイル */
-.editing-row td {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  vertical-align: middle;
-}
-
-.editing-row input,
-.editing-row select {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #95a5a6;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.editing-row .amount-input {
-  width: 80px; /* 金額入力欄の幅を調整 */
-}
+.edit-button, .save-button { color: #1a73e8; }
+.delete-button, .cancel-button { color: #d93025; }
 
 /* =================================== */
 /* ▼▼▼ スマートフォン用のスタイル（最終改善版） ▼▼▼ */
 /* =================================== */
 @media (max-width: 768px) {
-  /* ★★★ 基準のフォントサイズを大きくし、行間も設定 ★★★ */
-  html {
-    font-size: 100%; /* ユーザーのブラウザ設定を尊重 */
-  }
-  
+
+  /* ★★★ 基準フォントサイズと全体の余白を再設計 ★★★ */
+  html { font-size: 100%; }
   body {
-    font-size: 1rem; /* 1rem = 16px (ユーザー設定) を基準とする */
+    font-size: 18px; /* 基準を大きく */
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
   }
+  .container { padding: 0 16px; }
 
-  /* ★★★ 全体の余白を見直し ★★★ */
-  .container {
-    padding: 0 16px; 
-  }
-
+  /* ★★★ ヘッダーを見やすく ★★★ */
   header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 16px 0;
-    margin-bottom: 16px;
   }
-
-  header h1 {
-    font-size: 1.5rem; /* 約24px */
-  }
-  
-  /* ★★★ ボタン類をGoogleのように大きく、押しやすく ★★★ */
-  .logout-button,
-  .login-button,
-  .month-navigator button,
-  .main-nav button,
-  .entry-form button[type="submit"] {
-    font-size: 1.125rem; /* 約18px */
-    padding: 14px 20px;
-    border-radius: 28px; /* 角を丸くしてモダンに */
-    font-weight: 500;
-  }
-
+  header h1 { font-size: 1.5rem; }
   .logout-button {
     position: static;
     transform: none;
-    padding: 10px 14px;
     font-size: 1rem;
+    padding: 12px 14px;
+    border-radius: 24px;
+  }
+  
+  /* ★★★ ログインボタンを大きく ★★★ */
+  .login-button {
+    font-size: 1.125rem;
+    padding: 16px 24px;
+    border-radius: 28px;
   }
 
-  /* ★★★ フォーム全体のデザインを見直し ★★★ */
+  /* ★★★ ナビゲーションを大きく、押しやすく ★★★ */
+  .main-nav { margin-bottom: 24px; }
+  .main-nav button {
+    padding: 18px 10px; /* 高さを確保 */
+    font-size: 1.1rem;
+    flex: 1;
+  }
+
+  /* ★★★ フォームをGoogle風に、大きく、分かりやすく ★★★ */
   .entry-form, .records-section, .summary-section {
     padding: 24px;
     border-radius: 16px;
     margin-bottom: 24px;
   }
-
   .form-group label {
-    font-size: 1rem; /* 約16px */
+    font-size: 0.9rem; /* ラベルは少し小さめ */
     margin-bottom: 8px;
-    color: #5f6368; /* Google風の少し薄い文字色 */
   }
-
   .form-group input, 
   .form-group select {
-    padding: 16px;
-    font-size: 1.125rem; /* ★入力文字を大きく */
-    border: 1px solid #dadce0; /* Google風の枠線 */
-    border-radius: 8px;
-    background-color: #f8f9fa; /* Google風の背景色 */
+    padding: 18px 16px; /* ★高さを確保 */
+    font-size: 1.1rem;
   }
-
-  .form-group input:focus, 
-  .form-group select:focus {
-    border-color: #1a73e8; /* フォーカス時に青い枠線 */
-    box-shadow: 0 0 0 1px #1a73e8;
-  }
-
   .entry-form button[type="submit"] {
-    background-color: #1a73e8; /* Googleの青 */
-    color: white;
-  }
-  .entry-form button[type="submit"]:hover {
-    background-color: #1b66c9;
+    font-size: 1.2rem;
+    padding: 18px 24px;
   }
   
-  /* 月ナビゲーション */
-  .month-navigator h3 {
-    font-size: 1.25rem; /* 約20px */
-    font-weight: 500;
+  /* ★★★ 月ナビゲーションを見やすく ★★★ */
+  .month-navigator {
+    margin-bottom: 16px;
+    padding: 8px 0;
   }
-  
-  /* ★★★ テーブルを見やすく ★★★ */
-  th, td {
-    padding: 16px 12px;
-    font-size: 1.125rem; /* ★テーブル文字を大幅にUP (約18px) */
-    vertical-align: middle;
-  }
-
-  th {
+  .month-navigator h3 { font-size: 1.3rem; }
+  .month-navigator button {
     font-size: 1rem;
-    color: #5f6368;
-    font-weight: 500;
-  }
-
-  /* 操作ボタンを大きく、押しやすく */
-  .action-button {
-    font-size: 1.5rem; /* 約24px */
-    padding: 12px;
-    min-width: 48px;
-    min-height: 48px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    padding: 10px 16px;
   }
   
-  /* 編集中フォームを大きく */
+  /* ★★★ テーブルの文字を大きく、行間を広く ★★★ */
+  th, td {
+    padding: 18px 12px; /* ★高さを確保 */
+    font-size: 1.1rem; /* 文字を大きく */
+  }
+  th {
+    font-size: 0.9rem;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .summary-section h3, .records-section h3 {
+    font-size: 1.3rem;
+    padding: 8px 0;
+  }
+
+  /* ★★★ 編集・削除ボタンを大きく、確実に押せるように ★★★ */
+  .action-button {
+    font-size: 1.6rem; /* アイコンを大きく */
+  }
   .editing-row input,
   .editing-row select {
-    font-size: 1.125rem;
-    padding: 14px;
+    font-size: 1.1rem;
+    padding: 16px 14px;
   }
 }
