@@ -102,6 +102,7 @@ function App() {
     const newRecord = [
       new Date().toISOString(), date, category, paymentMethod, user, amount, description,
     ];
+
     try {
       await window.gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
@@ -110,8 +111,16 @@ function App() {
         resource: { values: [newRecord] },
       });
       alert('保存しました！');
-      resetForm();
-      await loadRecords();
+
+      // ▼▼▼ ここを修正しました ▼▼▼
+      // resetForm(); // この行をコメントアウト、または削除します。
+      
+      // 「金額」と「内容」のみをクリアして、連続入力しやすくします。
+      setAmount('');
+      setDescription('');
+      // ▲▲▲ 修正ここまで ▲▲▲
+
+      await loadRecords(); // データを再読み込み
     } catch (err) {
       console.error("Error saving record:", err);
       alert('保存に失敗しました。詳細はコンソールを確認してください。');
