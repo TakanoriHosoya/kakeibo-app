@@ -7,7 +7,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f7f9;
   color: #333;
-  font-size: 16px; /* 基本フォントサイズを設定 */
+  font-size: 16px;
 }
 
 .container {
@@ -86,7 +86,6 @@ header h1 {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
-  font-size: 16px; /* ラベルのフォントサイズを明示的に設定 */
 }
 
 .form-group input, .form-group select {
@@ -95,7 +94,7 @@ header h1 {
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
-  font-size: 16px; /* スマホでのズームを防ぐ */
+  font-size: 16px;
 }
 
 .entry-form button {
@@ -116,21 +115,20 @@ header h1 {
 
 .records-table {
   width: 100%;
-  overflow-x: auto; /* ★スマホ対応のキモ！テーブルがはみ出たら横スクロールさせる */
-  -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  white-space: nowrap; /* ★スマホ対応：セル内での改行を防ぐ */
+  white-space: nowrap;
 }
 
 th, td {
   text-align: left;
   padding: 12px;
   border-bottom: 1px solid #eee;
-  font-size: 16px; /* テーブルのフォントサイズを明示的に設定 */
 }
 
 th {
@@ -183,7 +181,6 @@ tbody tr:hover {
 .summary-section h3 {
   margin-top: 0;
   text-align: center;
-  font-size: 18px; /* 見出しのフォントサイズを明示的に設定 */
 }
 
 .summary-table {
@@ -197,7 +194,6 @@ tbody tr:hover {
 }
 .summary-table td {
   padding: 10px;
-  font-size: 16px; /* 集計テーブルのフォントサイズを明示的に設定 */
 }
 .summary-table .summary-total {
   border-top: 2px solid #333;
@@ -227,7 +223,6 @@ tbody tr:hover {
   padding: 8px 12px;
   cursor: pointer;
   transition: background-color 0.2s;
-  font-size: 16px; /* ボタンのフォントサイズを明示的に設定 */
 }
 
 .month-navigator button:hover {
@@ -276,7 +271,6 @@ tbody tr:hover {
   border: 1px solid #95a5a6;
   border-radius: 4px;
   box-sizing: border-box;
-  font-size: 16px; /* 編集中のフォントサイズを明示的に設定 */
 }
 
 .editing-row .amount-input {
@@ -284,195 +278,123 @@ tbody tr:hover {
 }
 
 /* =================================== */
-/* ▼▼▼ スマートフォン用のスタイル ▼▼▼ */
+/* ▼▼▼ スマートフォン用のスタイル（最終改善版） ▼▼▼ */
 /* =================================== */
 @media (max-width: 768px) {
-  /* 全体の文字サイズを大きくし、iOSでの文字サイズ自動調整を防ぐ */
+  /* ★★★ 基準のフォントサイズを大きくし、行間も設定 ★★★ */
+  html {
+    font-size: 100%; /* ユーザーのブラウザ設定を尊重 */
+  }
+  
   body {
-    font-size: 18px; /* 基本フォントサイズを大きく */
+    font-size: 1rem; /* 1rem = 16px (ユーザー設定) を基準とする */
+    line-height: 1.6;
     -webkit-text-size-adjust: 100%;
   }
 
+  /* ★★★ 全体の余白を見直し ★★★ */
   .container {
-    padding: 15px; /* コンテナの余白を少し増やす */
+    padding: 0 16px; 
   }
 
-  /* ヘッダーのレイアウトを調整 */
   header {
-    display: flex;
-    justify-content: space-between; /* 左右に分ける */
-    align-items: center;
-    padding-bottom: 15px;
-    text-align: left; /* 左寄せに変更 */
+    padding: 16px 0;
+    margin-bottom: 16px;
   }
 
   header h1 {
-    font-size: 1.6em; /* タイトルを大きく */
-    margin: 0;
-    flex: 1; /* 残りのスペースを占有 */
+    font-size: 1.5rem; /* 約24px */
+  }
+  
+  /* ★★★ ボタン類をGoogleのように大きく、押しやすく ★★★ */
+  .logout-button,
+  .login-button,
+  .month-navigator button,
+  .main-nav button,
+  .entry-form button[type="submit"] {
+    font-size: 1.125rem; /* 約18px */
+    padding: 14px 20px;
+    border-radius: 28px; /* 角を丸くしてモダンに */
+    font-weight: 500;
   }
 
   .logout-button {
-    position: static; /* 絶対配置を解除 */
+    position: static;
     transform: none;
-    padding: 10px 15px; /* ボタンを大きく */
-    font-size: 14px; /* フォントサイズを調整 */
-    flex-shrink: 0; /* ボタンが潰れないように */
-    min-width: 80px; /* 最小幅を設定 */
+    padding: 10px 14px;
+    font-size: 1rem;
   }
 
-  /* ナビゲーションメニューを改善 */
-  .main-nav {
-    flex-wrap: wrap; /* 必要に応じて折り返し */
-    gap: 5px; /* ボタン間の間隔 */
+  /* ★★★ フォーム全体のデザインを見直し ★★★ */
+  .entry-form, .records-section, .summary-section {
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 24px;
   }
 
-  .main-nav button {
-    padding: 15px 20px; /* ボタンを大きく */
-    font-size: 16px; /* フォントサイズを大きく */
-    min-width: 100px; /* 最小幅を設定 */
-    flex: 1; /* 均等に配置 */
-  }
-
-  /* フォーム要素を大きく */
   .form-group label {
-    font-size: 18px; /* ラベルを大きく */
-    margin-bottom: 8px; /* 余白を増やす */
+    font-size: 1rem; /* 約16px */
+    margin-bottom: 8px;
+    color: #5f6368; /* Google風の少し薄い文字色 */
   }
 
   .form-group input, 
   .form-group select {
-    padding: 15px; /* 入力欄を大きく */
-    font-size: 18px; /* フォントサイズを大きく */
-    border-radius: 8px; /* 角丸を大きく */
+    padding: 16px;
+    font-size: 1.125rem; /* ★入力文字を大きく */
+    border: 1px solid #dadce0; /* Google風の枠線 */
+    border-radius: 8px;
+    background-color: #f8f9fa; /* Google風の背景色 */
   }
 
-  .entry-form button {
-    padding: 18px; /* ボタンを大きく */
-    font-size: 18px; /* フォントサイズを大きく */
-    border-radius: 8px; /* 角丸を大きく */
-    font-weight: bold; /* 太字に */
+  .form-group input:focus, 
+  .form-group select:focus {
+    border-color: #1a73e8; /* フォーカス時に青い枠線 */
+    box-shadow: 0 0 0 1px #1a73e8;
   }
 
-  .entry-form, .records-section, .summary-section {
-    padding: 20px; /* セクションの余白を増やす */
-    border-radius: 12px; /* 角丸を大きく */
+  .entry-form button[type="submit"] {
+    background-color: #1a73e8; /* Googleの青 */
+    color: white;
   }
-
-  /* 月ナビゲーションを改善 */
-  .month-navigator {
-    padding: 0;
-    margin-bottom: 25px; /* 余白を増やす */
-  }
-
-  .month-navigator h3 {
-    font-size: 1.4em; /* 月表示を大きく */
-    font-weight: bold;
+  .entry-form button[type="submit"]:hover {
+    background-color: #1b66c9;
   }
   
-  .month-navigator button {
-    padding: 12px 16px; /* ボタンを大きく */
-    font-size: 16px; /* フォントサイズを大きく */
-    border-radius: 8px; /* 角丸を大きく */
-    min-width: 60px; /* 最小幅を設定 */
+  /* 月ナビゲーション */
+  .month-navigator h3 {
+    font-size: 1.25rem; /* 約20px */
+    font-weight: 500;
   }
-
-  /* テーブルの文字サイズと余白を調整 */
+  
+  /* ★★★ テーブルを見やすく ★★★ */
   th, td {
-    padding: 15px 10px; /* 余白を増やす */
-    font-size: 16px; /* フォントサイズを大きく */
+    padding: 16px 12px;
+    font-size: 1.125rem; /* ★テーブル文字を大幅にUP (約18px) */
+    vertical-align: middle;
   }
 
   th {
-    font-size: 16px; /* ヘッダーのフォントサイズを大きく */
-    font-weight: bold;
+    font-size: 1rem;
+    color: #5f6368;
+    font-weight: 500;
   }
 
-  .summary-table td {
-    font-size: 16px; /* 集計テーブルのフォントサイズを大きく */
-    padding: 12px 10px; /* 余白を増やす */
-  }
-
-  .summary-table .summary-total {
-    font-size: 18px; /* 合計行を大きく */
-    font-weight: bold;
-  }
-
-  .summary-section h3 {
-    font-size: 20px; /* 見出しを大きく */
-    margin-bottom: 20px; /* 余白を増やす */
-  }
-  
-  /* 操作ボタンのタップ領域を拡大 */
+  /* 操作ボタンを大きく、押しやすく */
   .action-button {
-    font-size: 1.8em; /* アイコンを大きく */
-    padding: 12px; /* 周囲のタップ可能な領域を広げる */
-    min-width: 44px; /* タップ領域の最小サイズ */
-    min-height: 44px; /* タップ領域の最小サイズ */
-    display: flex;
+    font-size: 1.5rem; /* 約24px */
+    padding: 12px;
+    min-width: 48px;
+    min-height: 48px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
   }
   
-  /* 編集中フォームの見た目を調整 */
+  /* 編集中フォームを大きく */
   .editing-row input,
   .editing-row select {
-    font-size: 16px; /* フォントサイズを大きく */
-    padding: 12px; /* 余白を増やす */
-    border-radius: 6px; /* 角丸を大きく */
-  }
-
-  .editing-row .amount-input {
-    width: 100px; /* 金額入力欄の幅を広げる */
-  }
-
-  /* ログインボタンを大きく */
-  .login-button {
-    padding: 18px 30px; /* ボタンを大きく */
-    font-size: 18px; /* フォントサイズを大きく */
-    border-radius: 8px; /* 角丸を大きく */
-    font-weight: bold; /* 太字に */
-  }
-
-  /* ローディングとログインコンテナを調整 */
-  .loading-container,
-  .login-container {
-    padding: 60px 20px; /* 余白を増やす */
-  }
-}
-
-/* さらに小さい画面（iPhone SEなど）への対応 */
-@media (max-width: 375px) {
-  body {
-    font-size: 16px; /* 非常に小さい画面では少し小さく */
-  }
-
-  .container {
-    padding: 10px; /* 余白を少し縮小 */
-  }
-
-  header h1 {
-    font-size: 1.4em; /* タイトルを少し小さく */
-  }
-
-  .main-nav button {
-    padding: 12px 15px; /* ボタンを少し小さく */
-    font-size: 14px; /* フォントサイズを少し小さく */
-  }
-
-  .form-group input, 
-  .form-group select {
-    padding: 12px; /* 入力欄を少し小さく */
-    font-size: 16px; /* フォントサイズを少し小さく */
-  }
-
-  .entry-form button {
-    padding: 15px; /* ボタンを少し小さく */
-    font-size: 16px; /* フォントサイズを少し小さく */
-  }
-
-  th, td {
-    padding: 12px 8px; /* テーブルの余白を少し縮小 */
-    font-size: 14px; /* フォントサイズを少し小さく */
+    font-size: 1.125rem;
+    padding: 14px;
   }
 }
