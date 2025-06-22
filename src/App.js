@@ -1,4 +1,4 @@
-// src/App.js (完全版)
+// src/App.js (全ての機能を統合した最終・完全版)
 
 import React, { useState, useEffect } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
@@ -7,16 +7,13 @@ import './App.css';
 // --- 定数設定 ---
 const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-
-// プルダウンの選択肢
 const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '水道・光熱費', '通信費', '保険', '税金・社会保険', 'その他'];
 const PAYMENT_METHOD_OPTIONS = ['楽天Pay', '現金', '楽天カード', 'PayPay', 'Amazonカード', 'セゾンカード', '京王パスポート', 'その他'];
 const USER_OPTIONS = ['ママ', 'パパ', '家族'];
 
 function App() {
   // --- State管理 ---
-  const todayString = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD形式
-
+  const todayString = new Date().toLocaleDateString('sv-SE');
   const [date, setDate] = useState(todayString);
   const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
   const [paymentMethod, setPaymentMethod] = useState('楽天Pay');
@@ -27,22 +24,35 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [allRecords, setAllRecords] = useState([]);
+  const [viewingDate, setViewingDate] = useState(new Date());
+  const [editingRow, setEditingRow] = useState(null);
+  const [editedRecord, setEditedRecord] = useState(null);
 
   // --- 関数定義 ---
 
-  const resetForm = () => {
-    setDate(todayString);
-    setCategory(CATEGORY_OPTIONS[0]);
-    setPaymentMethod('楽天Pay');
-    setUser('ママ');
-    setAmount('');
-    setDescription('');
+  const handleApiError = (err) => {
+    console.error("API Error:", err);
+    if (err.status === 401) {
+      alert('認証の有効期限が切れました。安全のため、再度ログインしてください。');
+      handleLogout();
+    } else {
+      alert('処理中にエラーが発生しました。詳細はコンソールを確認してください。');
+    }
+  };
+  
+  const handleLogout = () => {
+    googleLogout();
+    localStorage.removeItem('googleAuthToken');
+    setIsLoggedIn(false);
+    setRecords([]);
+    setAllRecords([]);
+    setEditingRow(null);
+    setEditedRecord(null);
   };
 
   const initializeGapiClient = async (token) => {
-    await window.gapi.client.init({
-      discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-    });
+    await window.gapi.client.init({ discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
     window.gapi.client.setToken(token);
     setIsLoggedIn(true);
     await loadRecords();
@@ -53,114 +63,105 @@ function App() {
       localStorage.setItem('googleAuthToken', JSON.stringify(tokenResponse));
       initializeGapiClient(tokenResponse);
     },
-    onError: (error) => {
-      console.log('Login Failed:', error);
-      alert('ログインに失敗しました。');
-    },
+    onError: (error) => { console.log('Login Failed:', error); alert('ログインに失敗しました。'); },
     scope: SCOPES,
   });
 
-  const handleLogout = () => {
-    googleLogout();
-    localStorage.removeItem('googleAuthToken');
-    setIsLoggedIn(false);
-    setRecords([]);
-  };
-
   const loadRecords = async () => {
-    setIsLoading(true);
     try {
       const response = await window.gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: 'data!A:G',
+        spreadsheetId: SPREADSHEET_ID, range: 'data!A:G',
       });
-      const allRecords = response.result.values ? response.result.values.slice(1) : [];
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth();
-      const thisMonthRecords = allRecords.filter(record => {
-        if (!record || !record[1]) return false;
-        const recordDate = new Date(record[1]);
-        if (isNaN(recordDate.getTime())) return false; // 無効な日付を除外
-        return recordDate.getFullYear() === currentYear && recordDate.getMonth() === currentMonth;
-      });
-      setRecords(thisMonthRecords.reverse());
-    } catch (err) {
-      console.error("Error loading records:", err);
-      alert('データの読み込みに失敗しました。詳細はコンソールを確認してください。');
-    } finally {
-      setIsLoading(false);
-    }
+      const headerRows = 1;
+      const loadedRecords = (response.result.values || []).slice(headerRows).map((row, index) => ({
+        data: row, rowNumber: index + headerRows + 1,
+      }));
+      setAllRecords(loadedRecords);
+    } catch (err) { handleApiError(err); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount) {
-      alert('金額を入力してください。');
-      return;
-    }
-    const newRecord = [
-      new Date().toISOString(), date, category, paymentMethod, user, amount, description,
-    ];
-
+    if (!amount) { alert('金額を入力してください。'); return; }
+    const newRecord = [ new Date().toISOString(), date, category, paymentMethod, user, amount, description ];
     try {
       await window.gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: 'data!A1',
-        valueInputOption: 'USER_ENTERED',
-        resource: { values: [newRecord] },
+        spreadsheetId: SPREADSHEET_ID, range: 'data!A1', valueInputOption: 'USER_ENTERED', resource: { values: [newRecord] },
       });
       alert('保存しました！');
-
-      // ▼▼▼ ここを修正しました ▼▼▼
-      // resetForm(); // この行をコメントアウト、または削除します。
-      
-      // 「金額」と「内容」のみをクリアして、連続入力しやすくします。
-      setAmount('');
-      setDescription('');
-      // ▲▲▲ 修正ここまで ▲▲▲
-
-      await loadRecords(); // データを再読み込み
-    } catch (err) {
-      console.error("Error saving record:", err);
-      alert('保存に失敗しました。詳細はコンソールを確認してください。');
-    }
+      setAmount(''); setDescription('');
+      await loadRecords();
+    } catch (err) { handleApiError(err); }
   };
 
-  // アプリ起動時の初期化処理
+  const handleDelete = async (recordToDelete) => {
+    if (!window.confirm(`【削除確認】\n日付: ${recordToDelete.data[1]}\n金額: ${recordToDelete.data[5]}円\n\nこのデータを本当に削除しますか？`)) return;
+    try {
+      await window.gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID, resource: { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: recordToDelete.rowNumber - 1, endIndex: recordToDelete.rowNumber }}}] },
+      });
+      alert('削除しました。');
+      await loadRecords();
+    } catch (error) { handleApiError(error); }
+  };
+  
+  const handleSave = async () => {
+    try {
+      await window.gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID, range: `data!A${editingRow.rowNumber}:G${editingRow.rowNumber}`, valueInputOption: 'USER_ENTERED', resource: { values: [editedRecord] },
+      });
+      alert('更新しました。');
+      setEditingRow(null); setEditedRecord(null);
+      await loadRecords();
+    } catch (error) { handleApiError(error); }
+  };
+  
+  const handleEdit = (record) => {
+    setEditingRow(record);
+    const editableData = [...record.data];
+    try { editableData[1] = new Date(record.data[1]).toLocaleDateString('sv-SE'); } catch (e) { console.error(e); }
+    setEditedRecord(editableData);
+  };
+  const handleEditChange = (e, index) => { const newEditedRecord = [...editedRecord]; newEditedRecord[index] = e.target.value; setEditedRecord(newEditedRecord); };
+  const handleCancel = () => { setEditingRow(null); setEditedRecord(null); };
+  const handlePrevMonth = () => { const newDate = new Date(viewingDate); newDate.setMonth(newDate.getMonth() - 1); setViewingDate(newDate); };
+  const handleNextMonth = () => { const newDate = new Date(viewingDate); newDate.setMonth(newDate.getMonth() + 1); setViewingDate(newDate); };
+  const isNextMonthDisabled = () => { const today = new Date(); return viewingDate.getFullYear() > today.getFullYear() || (viewingDate.getFullYear() === today.getFullYear() && viewingDate.getMonth() >= today.getMonth()); };
+
+  // --- Effectフック ---
   useEffect(() => {
     const loadGapiAndRestoreLogin = async () => {
       try {
-        await new Promise((resolve) => window.gapi.load('client', resolve));
+        await new Promise((resolve, reject) => window.gapi.load('client', { callback: resolve, onerror: reject }));
         const storedToken = localStorage.getItem('googleAuthToken');
         if (storedToken) {
           await initializeGapiClient(JSON.parse(storedToken));
         }
-      } catch (error) {
-        console.error("アプリの初期化に失敗しました:", error);
-        alert('アプリの初期化に失敗しました。リロードしてみてください。');
-      } finally {
-        // 成功しても失敗しても、必ずローディングを解除
-        setIsLoading(false);
-      }
+      } catch (error) { console.error("アプリの初期化に失敗しました:", error); } finally { setIsLoading(false); }
     };
     loadGapiAndRestoreLogin();
-  }, []); // 空の配列[]は、この処理が最初に一度だけ実行されることを保証します
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const targetYear = viewingDate.getFullYear(); const targetMonth = viewingDate.getMonth();
+    const filteredRecords = allRecords.filter(record => {
+      if (!record || !record.data[1]) return false;
+      const recordDate = new Date(record.data[1]);
+      if (isNaN(recordDate.getTime())) return false;
+      return recordDate.getFullYear() === targetYear && recordDate.getMonth() === targetMonth;
+    });
+    setRecords(filteredRecords);
+  }, [allRecords, viewingDate, isLoggedIn]);
 
   // --- JSX (画面描画) ---
   return (
     <div className="container">
-      <header>
-        <h1>React 家計簿</h1>
-        {isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}
-      </header>
-      
+      <header><h1>React 家計簿</h1>{isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}</header>
       {isLoading ? (
         <div className="loading-container"><p>読み込み中...</p></div>
       ) : !isLoggedIn ? (
-        <div className="login-container">
-          <button onClick={() => login()} className="login-button">Googleアカウントでログイン</button>
-        </div>
+        <div className="login-container"><button onClick={() => login()} className="login-button">Googleアカウントでログイン</button></div>
       ) : (
         <main>
           <form onSubmit={handleSubmit} className="entry-form">
@@ -175,16 +176,33 @@ function App() {
           </form>
 
           <section className="records-section">
-            <h3>今月の記録</h3>
+            <div className="month-navigator">
+              <button onClick={handlePrevMonth}>&lt; 先月</button>
+              <h3>{viewingDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })} の記録</h3>
+              <button onClick={handleNextMonth} disabled={isNextMonthDisabled()}>翌月 &gt;</button>
+            </div>
             <div className="records-table">
                 <table>
-                  <thead><tr><th>日付</th><th>カテゴリ</th><th>支払方法</th><th>金額</th><th>内容</th></tr></thead>
+                  <thead><tr><th>日付</th><th>カテゴリ</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th></tr></thead>
                   <tbody>
-                    {records.map((row, index) => (
-                      <tr key={index}>
-                        <td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td>
-                        <td>{Number(row[5]).toLocaleString()} 円</td><td>{row[6]}</td>
-                      </tr>
+                    {records.map((record) => (
+                      editingRow && editingRow.rowNumber === record.rowNumber ? (
+                        <tr key={record.rowNumber} className="editing-row">
+                          <td><input type="date" value={editedRecord[1]} onChange={(e) => handleEditChange(e, 1)} /></td>
+                          <td><select value={editedRecord[2]} onChange={(e) => handleEditChange(e, 2)}>{CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><select value={editedRecord[3]} onChange={(e) => handleEditChange(e, 3)}>{PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><input type="number" value={editedRecord[5]} onChange={(e) => handleEditChange(e, 5)} className="amount-input" /></td>
+                          <td><input type="text" value={editedRecord[6]} onChange={(e) => handleEditChange(e, 6)} /></td>
+                          <td><button onClick={handleSave} className="action-button save-button">✔️</button><button onClick={handleCancel} className="action-button cancel-button">✖️</button></td>
+                        </tr>
+                      ) : (
+                        <tr key={record.rowNumber}>
+                          <td>{new Date(record.data[1]).toLocaleDateString()}</td>
+                          <td>{record.data[2]}</td><td>{record.data[3]}</td>
+                          <td>{Number(record.data[5] || 0).toLocaleString()} 円</td><td>{record.data[6]}</td>
+                          <td><button onClick={() => handleEdit(record)} className="action-button edit-button">✏️</button><button onClick={() => handleDelete(record)} className="action-button delete-button">🗑️</button></td>
+                        </tr>
+                      )
                     ))}
                   </tbody>
                 </table>
