@@ -16,8 +16,9 @@ body {
 }
 
 header {
+  position: relative;
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
   border-bottom: 1px solid #ddd;
   padding-bottom: 20px;
 }
@@ -25,8 +26,10 @@ header {
 header h1 {
   margin: 0;
   color: #2c3e50;
+  font-size: 2em;
 }
 
+.loading-container,
 .login-container {
   text-align: center;
   padding: 50px 0;
@@ -47,7 +50,26 @@ header h1 {
   background-color: #3367D6;
 }
 
-.entry-form, .records-section {
+.logout-button {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+  background-color: #5a6268;
+}
+
+.entry-form, .records-section, .summary-section {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
@@ -71,6 +93,7 @@ header h1 {
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
+  font-size: 16px; /* スマホでのズームを防ぐ */
 }
 
 .entry-form button {
@@ -91,12 +114,14 @@ header h1 {
 
 .records-table {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: auto; /* ★スマホ対応のキモ！テーブルがはみ出たら横スクロールさせる */
+  -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  white-space: nowrap; /* ★スマホ対応：セル内での改行を防ぐ */
 }
 
 th, td {
@@ -112,114 +137,6 @@ th {
 tbody tr:hover {
   background-color: #f1f1f1;
 }
-
-/* src/App.css の末尾に追加 */
-
-.logout-button {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.logout-button:hover {
-  background-color: #5a6268;
-}
-
-/* ヘッダーの位置調整 */
-header {
-  position: relative;
-}
-
-/* src/App.css の末尾に追加 */
-
-.month-navigator {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 0 10px;
-}
-
-.month-navigator h3 {
-  margin: 0;
-  font-size: 1.2em;
-  color: #333;
-  white-space: nowrap; /* 月が長い場合に改行しないように */
-}
-
-.month-navigator button {
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.month-navigator button:hover {
-  background-color: #e0e0e0;
-}
-
-.month-navigator button:disabled {
-  background-color: #f8f8f8;
-  color: #ccc;
-  cursor: not-allowed;
-}
-
-/* src/App.css の末尾に追加 */
-
-/* 履歴テーブルの操作ボタン */
-.action-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2em;
-  padding: 4px 8px;
-  transition: transform 0.2s;
-}
-
-.action-button:hover {
-  transform: scale(1.2);
-}
-
-.edit-button, .save-button {
-  color: #2980b9;
-}
-
-.delete-button, .cancel-button {
-  color: #c0392b;
-}
-
-
-/* 編集中行のスタイル */
-.editing-row td {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  vertical-align: middle;
-}
-
-.editing-row input,
-.editing-row select {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #95a5a6;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.editing-row .amount-input {
-  width: 80px; /* 金額入力欄の幅を調整 */
-}
-
-/* src/App.css の末尾に追加 */
 
 /* --- ナビゲーションメニュー --- */
 .main-nav {
@@ -279,4 +196,124 @@ header {
 .summary-table .summary-total {
   border-top: 2px solid #333;
   font-size: 1.1em;
+}
+
+/* 月ナビゲーション */
+.month-navigator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.month-navigator h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #333;
+  white-space: nowrap;
+}
+
+.month-navigator button {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.month-navigator button:hover {
+  background-color: #e0e0e0;
+}
+
+.month-navigator button:disabled {
+  background-color: #f8f8f8;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 履歴テーブルの操作ボタン */
+.action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2em;
+  padding: 4px 8px;
+  transition: transform 0.2s;
+}
+
+.action-button:hover {
+  transform: scale(1.2);
+}
+
+.edit-button, .save-button {
+  color: #2980b9;
+}
+
+.delete-button, .cancel-button {
+  color: #c0392b;
+}
+
+/* 編集中行のスタイル */
+.editing-row td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  vertical-align: middle;
+}
+
+.editing-row input,
+.editing-row select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #95a5a6;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.editing-row .amount-input {
+  width: 80px; /* 金額入力欄の幅を調整 */
+}
+
+/* =================================== */
+/* ▼▼▼ スマートフォン用のスタイル ▼▼▼ */
+/* =================================== */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  header h1 {
+    font-size: 1.6em; /* 変更 */
+  }
+
+  .logout-button {
+    padding: 6px 10px;
+    font-size: 13px; /* 変更 */
+    top: 20px;
+    transform: none;
+  }
+
+  .main-nav button {
+    padding: 12px 10px;
+    font-size: 15px; /* 変更 */
+  }
+
+  .month-navigator h3 {
+    font-size: 1.1em; /* 変更 */
+  }
+  
+  .month-navigator button {
+    padding: 6px 8px;
+    font-size: 15px; /* 追加 */
+  }
+
+  th, td {
+    padding: 8px;
+    font-size: 15px; /* 変更 */
+  }
+
+  .summary-table td {
+    font-size: 15px; /* 追加 */
+  }
 }
