@@ -1,22 +1,44 @@
-// src/App.js
+// src/App.js (完全版)
 
 import React, { useState, useEffect } from 'react';
-// googleLogoutを追加でインポートします
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import './App.css';
 
-// ▼▼▼ あなたの正しいスプレッドシートIDをここに設定してください ▼▼▼
+// --- 定数設定 ---
 const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
+// プルダウンの選択肢
+const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '水道・光熱費', '通信費', '保険', '税金・社会保険', 'その他'];
+const PAYMENT_METHOD_OPTIONS = ['楽天Pay', '現金', '楽天カード', 'PayPay', 'Amazonカード', 'セゾンカード', '京王パスポート', 'その他'];
+const USER_OPTIONS = ['ママ', 'パパ', '家族'];
+
 function App() {
+  // --- State管理 ---
+  const todayString = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD形式
+
+  const [date, setDate] = useState(todayString);
+  const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
+  const [paymentMethod, setPaymentMethod] = useState('楽天Pay');
+  const [user, setUser] = useState('ママ');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [records, setRecords] = useState([]);
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('食費');
   const [isLoading, setIsLoading] = useState(true);
 
-  // GAPIクライアントを初期化する関数
+  // --- 関数定義 ---
+
+  const resetForm = () => {
+    setDate(todayString);
+    setCategory(CATEGORY_OPTIONS[0]);
+    setPaymentMethod('楽天Pay');
+    setUser('ママ');
+    setAmount('');
+    setDescription('');
+  };
+
   const initializeGapiClient = async (token) => {
     await window.gapi.client.init({
       discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
@@ -25,178 +47,134 @@ function App() {
     setIsLoggedIn(true);
     await loadRecords();
   };
-  
-  // Googleログイン処理
+
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
-      // ★ポイント1: 取得した認証情報をlocalStorageに保存
       localStorage.setItem('googleAuthToken', JSON.stringify(tokenResponse));
       initializeGapiClient(tokenResponse);
     },
-    onError: (error) => console.log('Login Failed:', error),
+    onError: (error) => {
+      console.log('Login Failed:', error);
+      alert('ログインに失敗しました。');
+    },
     scope: SCOPES,
   });
 
-  // ログアウト処理
   const handleLogout = () => {
-    googleLogout(); // Googleのセッションからログアウト
-    // ★ポイント2: localStorageから認証情報を削除
+    googleLogout();
     localStorage.removeItem('googleAuthToken');
     setIsLoggedIn(false);
-    setRecords([]); // 画面の記録もクリア
+    setRecords([]);
   };
 
-  // データの読み込み関数（変更なし）
   const loadRecords = async () => {
     setIsLoading(true);
     try {
       const response = await window.gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'data!A:D', // シート名はご自身のものに合わせてください
+        range: 'data!A:G',
       });
-
-      // ヘッダー行を除いた、すべてのレコードを取得
       const allRecords = response.result.values ? response.result.values.slice(1) : [];
-
-      // ▼▼▼ ここからが今回追加したフィルタリング処理です ▼▼▼
-
-      // 1. 今日の日付から、現在の「年」と「月」を取得します
       const today = new Date();
-      const currentYear = today.getFullYear(); // 例: 2025
-      const currentMonth = today.getMonth();   // 例: 6月の場合、5 (0から始まるため)
-
-      // 2. 全レコードを1行ずつチェックし、今月のものだけを抽出します
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
       const thisMonthRecords = allRecords.filter(record => {
-        // record[0] には '2025/6/22' のような日付文字列が入っています
-        if (!record || !record[0]) {
-          return false; // 日付がない行は除外
-        }
-        
-        // 日付文字列からDateオブジェクトを生成
-        const recordDate = new Date(record[0]);
-
-        // レコードの「年」と「月」が、現在の「年」と「月」に一致するかを判定
+        if (!record || !record[1]) return false;
+        const recordDate = new Date(record[1]);
+        if (isNaN(recordDate.getTime())) return false; // 無効な日付を除外
         return recordDate.getFullYear() === currentYear && recordDate.getMonth() === currentMonth;
       });
-
-      // ▲▲▲ フィルタリング処理ここまで ▲▲▲
-
-      // 3. フィルタリング後の「今月のデータ」だけを画面表示用のstateにセットします
-      //    (reverse()で日付の新しいものが上に来るようにしています)
       setRecords(thisMonthRecords.reverse());
-
     } catch (err) {
-      console.error("Error loading records", err);
+      console.error("Error loading records:", err);
+      alert('データの読み込みに失敗しました。詳細はコンソールを確認してください。');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // データの書き込み関数（変更なし）
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount) return;
-    const newRecord = [ new Date().toLocaleDateString('ja-JP'), category, amount ];
+    if (!amount) {
+      alert('金額を入力してください。');
+      return;
+    }
+    const newRecord = [
+      new Date().toISOString(), date, category, paymentMethod, user, amount, description,
+    ];
     try {
       await window.gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'data!A1', // シンプルなシート名 'data' になっていることを確認
+        range: 'data!A1',
         valueInputOption: 'USER_ENTERED',
         resource: { values: [newRecord] },
       });
       alert('保存しました！');
-      setAmount('');
+      resetForm();
       await loadRecords();
     } catch (err) {
-      console.error("Error saving record", err);
-      alert('保存に失敗しました。');
+      console.error("Error saving record:", err);
+      alert('保存に失敗しました。詳細はコンソールを確認してください。');
     }
   };
 
-  // ★ポイント3: アプリ起動時に実行される処理
+  // アプリ起動時の初期化処理
   useEffect(() => {
     const loadGapiAndRestoreLogin = async () => {
-      // GAPIクライアントライブラリの読み込みを待つ
-      await new Promise((resolve) => window.gapi.load('client', resolve));
-      
-      // localStorageに保存された認証情報があるかチェック
-      const storedToken = localStorage.getItem('googleAuthToken');
-      if (storedToken) {
-        // 保存された情報を使ってログイン状態を復元
-        await initializeGapiClient(JSON.parse(storedToken));
+      try {
+        await new Promise((resolve) => window.gapi.load('client', resolve));
+        const storedToken = localStorage.getItem('googleAuthToken');
+        if (storedToken) {
+          await initializeGapiClient(JSON.parse(storedToken));
+        }
+      } catch (error) {
+        console.error("アプリの初期化に失敗しました:", error);
+        alert('アプリの初期化に失敗しました。リロードしてみてください。');
+      } finally {
+        // 成功しても失敗しても、必ずローディングを解除
+        setIsLoading(false);
       }
-      setIsLoading(false); // ローディング完了
     };
-    
     loadGapiAndRestoreLogin();
-  }, []); // この空の配列 [] は、この処理が最初に一度だけ実行されることを意味します
+  }, []); // 空の配列[]は、この処理が最初に一度だけ実行されることを保証します
 
+  // --- JSX (画面描画) ---
   return (
     <div className="container">
       <header>
         <h1>React 家計簿</h1>
-        {/* ログイン中のみログアウトボタンを表示 */}
-        {isLoggedIn && (
-          <button onClick={handleLogout} className="logout-button">
-            ログアウト
-          </button>
-        )}
+        {isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}
       </header>
       
       {isLoading ? (
-        <p>読み込み中...</p>
+        <div className="loading-container"><p>読み込み中...</p></div>
       ) : !isLoggedIn ? (
         <div className="login-container">
-          <button onClick={() => login()} className="login-button">
-            Googleアカウントでログイン
-          </button>
+          <button onClick={() => login()} className="login-button">Googleアカウントでログイン</button>
         </div>
       ) : (
         <main>
           <form onSubmit={handleSubmit} className="entry-form">
             <h3>データ入力</h3>
-            <div className="form-group">
-              <label>カテゴリ</label>
-              <select value={category} onChange={e => setCategory(e.target.value)}>
-                <option>食費</option>
-                <option>交通費</option>
-                <option>日用品</option>
-                <option>趣味・娯楽</option>
-                <option>交際費</option>
-                <option>その他</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>金額 (円)</label>
-              <input 
-                type="number"
-                placeholder="例: 1500" 
-                value={amount} 
-                onChange={e => setAmount(e.target.value)} 
-                required 
-              />
-            </div>
-            <button type="submit">保存する</button>
+            <div className="form-group"><label htmlFor="date">日付</label><input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
+            <div className="form-group"><label htmlFor="category">支出カテゴリ</label><select id="category" value={category} onChange={e => setCategory(e.target.value)}>{CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
+            <div className="form-group"><label htmlFor="paymentMethod">支払方法</label><select id="paymentMethod" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>{PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
+            <div className="form-group"><label htmlFor="user">利用者</label><select id="user" value={user} onChange={e => setUser(e.target.value)}>{USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
+            <div className="form-group"><label htmlFor="amount">金額 (円)</label><input type="number" inputMode="numeric" pattern="[0-9]*" id="amount" placeholder="例: 1500" value={amount} onChange={e => setAmount(e.target.value)} required /></div>
+            <div className="form-group"><label htmlFor="description">内容 (任意)</label><input type="text" id="description" placeholder="例: スーパー〇〇での買い物" value={description} onChange={e => setDescription(e.target.value)} /></div>
+            <button type="submit">この内容で保存する</button>
           </form>
 
           <section className="records-section">
-            <h3>記録一覧</h3>
-            {/* ... 記録一覧の表示部分は変更なし ... */}
+            <h3>今月の記録</h3>
             <div className="records-table">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>日付</th>
-                      <th>カテゴリ</th>
-                      <th>金額</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>日付</th><th>カテゴリ</th><th>支払方法</th><th>金額</th><th>内容</th></tr></thead>
                   <tbody>
                     {records.map((row, index) => (
                       <tr key={index}>
-                        <td>{row[0]}</td>
-                        <td>{row[1]}</td>
-                        <td>{Number(row[2]).toLocaleString()} 円</td>
+                        <td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td>
+                        <td>{Number(row[5]).toLocaleString()} 円</td><td>{row[6]}</td>
                       </tr>
                     ))}
                   </tbody>
