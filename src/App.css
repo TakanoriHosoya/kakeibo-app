@@ -8,8 +8,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f4f7f9;
-  color: #202124; /* Googleの標準テキスト色 */
+  background-color: #f8f9fa;
+  color: #202124;
   font-size: 16px;
 }
 
@@ -67,11 +67,6 @@ header h1 {
   border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.logout-button:hover {
-  background-color: #5a6268;
 }
 
 .entry-form, .records-section, .summary-section {
@@ -119,11 +114,6 @@ header h1 {
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.entry-form button[type="submit"]:hover {
-  background-color: #1b66c9;
 }
 
 .records-table {
@@ -168,18 +158,12 @@ tbody tr:hover {
   cursor: pointer;
   color: #5f6368;
   border-bottom: 3px solid transparent;
-  transition: color 0.2s, border-bottom-color 0.2s;
   font-weight: 500;
-}
-
-.main-nav button:hover {
-  color: #202124;
 }
 
 .main-nav button.active {
   color: #1967d2;
   border-bottom-color: #1967d2;
-  font-weight: 500;
 }
 
 .month-navigator {
@@ -203,11 +187,6 @@ tbody tr:hover {
   border-radius: 8px;
   padding: 8px 16px;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.month-navigator button:hover {
-  background-color: #e8eaed;
 }
 
 .month-navigator button:disabled {
@@ -239,103 +218,111 @@ tbody tr:hover {
 .delete-button, .cancel-button { color: #d93025; }
 
 /* =================================== */
-/* ▼▼▼ スマートフォン用のスタイル（最終改善版） ▼▼▼ */
+/* ▼▼▼ スマートフォン用のスタイル（最終・全面改修版） ▼▼▼ */
 /* =================================== */
 @media (max-width: 768px) {
 
-  /* ★★★ 基準フォントサイズと全体の余白を再設計 ★★★ */
-  html { font-size: 100%; }
+  /* ★★★ 基準のフォントサイズをHTMLに設定 ★★★ */
+  html {
+    font-size: 24px; /* ★★★ 基準を大幅にUP！ これが1remになります ★★★ */
+  }
+  
   body {
-    font-size: 18px; /* 基準を大きく */
+    font-size: 1rem; /* body自体はhtmlのサイズを継承 */
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
   }
   .container { padding: 0 16px; }
 
-  /* ★★★ ヘッダーを見やすく ★★★ */
+  /* ★★★ ヘッダーを大きく ★★★ */
   header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 0;
+    padding: 20px 0;
+    margin-bottom: 20px;
   }
-  header h1 { font-size: 1.5rem; }
+  header h1 { font-size: 1.5rem; /* 24px * 1.5 = 36px */ }
   .logout-button {
     position: static;
     transform: none;
-    font-size: 1rem;
-    padding: 12px 14px;
-    border-radius: 24px;
+    font-size: 1rem; /* 24px */
+    padding: 14px 18px;
+    border-radius: 30px;
   }
   
   /* ★★★ ログインボタンを大きく ★★★ */
   .login-button {
-    font-size: 1.125rem;
-    padding: 16px 24px;
-    border-radius: 28px;
+    font-size: 1.2rem;
+    padding: 18px 28px;
+    border-radius: 34px;
   }
 
-  /* ★★★ ナビゲーションを大きく、押しやすく ★★★ */
+  /* ★★★ ナビゲーションをご指示通りに、大きく、押しやすく ★★★ */
   .main-nav { margin-bottom: 24px; }
   .main-nav button {
-    padding: 18px 10px; /* 高さを確保 */
-    font-size: 1.1rem;
+    font-size: 1.58rem; /* ★★★ ご指示の38pxに設定 ★★★ */
+    font-weight: 500;
+    padding: 24px 10px;
     flex: 1;
+    border-bottom-width: 4px;
   }
 
-  /* ★★★ フォームをGoogle風に、大きく、分かりやすく ★★★ */
+  /* ★★★ フォームを大きく、分かりやすく ★★★ */
   .entry-form, .records-section, .summary-section {
     padding: 24px;
     border-radius: 16px;
     margin-bottom: 24px;
   }
   .form-group label {
-    font-size: 0.9rem; /* ラベルは少し小さめ */
-    margin-bottom: 8px;
+    font-size: 1.1rem; /* 26.4px */
+    margin-bottom: 12px;
   }
   .form-group input, 
   .form-group select {
-    padding: 18px 16px; /* ★高さを確保 */
-    font-size: 1.1rem;
+    padding: 20px 18px; /* ★★★ 高さを確保 ★★★ */
+    font-size: 1.2rem;  /* ★★★ 文字を大きく (28.8px) ★★★ */
+    border-radius: 12px;
   }
   .entry-form button[type="submit"] {
-    font-size: 1.2rem;
-    padding: 18px 24px;
+    font-size: 1.3rem; /* 31.2px */
+    padding: 22px 24px;
+    border-radius: 12px;
   }
   
   /* ★★★ 月ナビゲーションを見やすく ★★★ */
-  .month-navigator {
-    margin-bottom: 16px;
-    padding: 8px 0;
-  }
-  .month-navigator h3 { font-size: 1.3rem; }
+  .month-navigator { margin-bottom: 20px; }
+  .month-navigator h3 { font-size: 1.4rem; } /* 33.6px */
   .month-navigator button {
-    font-size: 1rem;
-    padding: 10px 16px;
+    font-size: 1.1rem; /* 26.4px */
+    padding: 14px 18px;
+    border-radius: 12px;
   }
   
   /* ★★★ テーブルの文字を大きく、行間を広く ★★★ */
   th, td {
-    padding: 18px 12px; /* ★高さを確保 */
-    font-size: 1.1rem; /* 文字を大きく */
+    padding: 22px 14px; /* ★★★ 高さを確保 ★★★ */
+    font-size: 1.2rem;  /* ★★★ 文字を大きく (28.8px) ★★★ */
+    vertical-align: middle;
   }
   th {
-    font-size: 0.9rem;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    font-size: 1rem;
+    padding-top: 14px;
+    padding-bottom: 14px;
   }
   .summary-section h3, .records-section h3 {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     padding: 8px 0;
+    margin-bottom: 16px;
   }
 
   /* ★★★ 編集・削除ボタンを大きく、確実に押せるように ★★★ */
   .action-button {
-    font-size: 1.6rem; /* アイコンを大きく */
+    font-size: 1.8rem; /* 43.2px */
+    padding: 16px;
   }
+  
+  /* 編集中フォームを大きく */
   .editing-row input,
   .editing-row select {
-    font-size: 1.1rem;
-    padding: 16px 14px;
+    font-size: 1.2rem;
+    padding: 18px 16px;
   }
 }
