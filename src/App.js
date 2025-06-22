@@ -176,7 +176,7 @@ function App() {
   // --- JSX (画面描画) ---
   return (
     <div className="container">
-      <header><h1>細矢ファミリー 家計簿</h1>{isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}</header>
+      <header><h1>細矢さん 家計簿</h1>{isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}</header>
       
       {isLoading ? (
         <div className="loading-container"><p>読み込み中...</p></div>
@@ -231,7 +231,6 @@ function App() {
               </section>
             )}
 
-            {/* ▼▼▼ Homeと履歴ページ共通の記録一覧 ▼▼▼ */}
             <section className="records-section">
               <div className="month-navigator">
                 <button onClick={handlePrevMonth}>&lt; 先月</button>
@@ -240,13 +239,16 @@ function App() {
               </div>
               <div className="records-table">
                   <table>
-                    <thead><tr><th>日付</th><th>カテゴリ</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th></tr></thead>
+                    {/* ▼▼▼ テーブルヘッダーに「利用者」を追加 ▼▼▼ */}
+                    <thead><tr><th>日付</th><th>カテゴリ</th><th>利用者</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th></tr></thead>
                     <tbody>
                       {records.map((record) => (
                         editingRow && editingRow.rowNumber === record.rowNumber ? (
                           <tr key={record.rowNumber} className="editing-row">
                             <td><input type="date" value={editedRecord[1]} onChange={(e) => handleEditChange(e, 1)} /></td>
                             <td><select value={editedRecord[2]} onChange={(e) => handleEditChange(e, 2)}>{CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                            {/* ▼▼▼ 編集中フォームに「利用者」を追加 ▼▼▼ */}
+                            <td><select value={editedRecord[4]} onChange={(e) => handleEditChange(e, 4)}>{USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
                             <td><select value={editedRecord[3]} onChange={(e) => handleEditChange(e, 3)}>{PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
                             <td><input type="number" value={editedRecord[5]} onChange={(e) => handleEditChange(e, 5)} className="amount-input" /></td>
                             <td><input type="text" value={editedRecord[6]} onChange={(e) => handleEditChange(e, 6)} /></td>
@@ -255,8 +257,12 @@ function App() {
                         ) : (
                           <tr key={record.rowNumber}>
                             <td>{new Date(record.data[1]).toLocaleDateString()}</td>
-                            <td>{record.data[2]}</td><td>{record.data[3]}</td>
-                            <td>{Number(record.data[5] || 0).toLocaleString()} 円</td><td>{record.data[6]}</td>
+                            <td>{record.data[2]}</td>
+                            {/* ▼▼▼ 表示に「利用者」を追加 ▼▼▼ */}
+                            <td>{record.data[4]}</td>
+                            <td>{record.data[3]}</td>
+                            <td>{Number(record.data[5] || 0).toLocaleString()} 円</td>
+                            <td>{record.data[6]}</td>
                             <td><button onClick={() => handleEdit(record)} className="action-button edit-button">✏️</button><button onClick={() => handleDelete(record)} className="action-button delete-button">🗑️</button></td>
                           </tr>
                         )
@@ -265,7 +271,6 @@ function App() {
                   </table>
                 </div>
             </section>
-            {/* ▲▲▲ 共通の記録一覧ここまで ▲▲▲ */}
           </main>
         </>
       )}
