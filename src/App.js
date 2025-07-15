@@ -31,6 +31,8 @@ function App() {
 
   const [page, setPage] = useState('Home'); // 'Home' or 'History'
   const [summary, setSummary] = useState({}); // カテゴリ別集計
+  const [userSummary, setUserSummary] = useState({}); // 利用者別集計
+  const [categoryUserSummary, setCategoryUserSummary] = useState({}); // カテゴリ×利用者集計
 
 
   // --- 関数定義 ---
@@ -168,16 +170,35 @@ function App() {
     setRecords(filteredRecords);
 
     const categoryTotals = {};
+    const userTotals = {};
+    const categoryUserTotals = {};
     filteredRecords.forEach(record => {
       const category = record.data[2];
+      const user = record.data[4];
       const amount = Number(record.data[5] || 0);
+
+      // カテゴリ集計
       if (category in categoryTotals) {
         categoryTotals[category] += amount;
       } else {
         categoryTotals[category] = amount;
       }
+
+      // 利用者集計
+      if (user in userTotals) {
+        userTotals[user] += amount;
+      } else {
+        userTotals[user] = amount;
+      }
+
+      // カテゴリ×利用者集計
+      if (!categoryUserTotals[category]) categoryUserTotals[category] = {};
+      if (!categoryUserTotals[category][user]) categoryUserTotals[category][user] = 0;
+      categoryUserTotals[category][user] += amount;
     });
     setSummary(categoryTotals);
+    setUserSummary(userTotals);
+    setCategoryUserSummary(categoryUserTotals);
 
   }, [allRecords, viewingDate, isLoggedIn]);
 
@@ -220,6 +241,10 @@ function App() {
                       <tr>
                         <th>カテゴリ</th>
                         <th>合計金額</th>
+                        {/* ▼▼▼ 利用者ごとにヘッダーを表示 ▼▼▼ */}
+                        {USER_OPTIONS.map(user => (
+                          <th key={user}>{user}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -227,11 +252,32 @@ function App() {
                         <tr key={category}>
                           <td>{category}</td>
                           <td>{total.toLocaleString()} 円</td>
+                          {/* ▼▼▼ 各利用者の金額を表示 ▼▼▼ */}
+                          {USER_OPTIONS.map(user => (
+                            <td key={user}>
+                              {categoryUserSummary[category] && categoryUserSummary[category][user]
+                                ? categoryUserSummary[category][user].toLocaleString()
+                                : 0
+                              } 円
+                            </td>
+                          ))}
                         </tr>
                       ))}
-                       <tr className="summary-total">
+                      <tr className="summary-total">
                         <td><strong>総合計</strong></td>
-                        <td><strong>{Object.values(summary).reduce((acc, cur) => acc + cur, 0).toLocaleString()} 円</strong></td>
+                        <td>
+                          <strong>
+                            {Object.values(summary).reduce((acc, cur) => acc + cur, 0).toLocaleString()} 円
+                          </strong>
+                        </td>
+                        {/* ▼▼▼ 利用者ごとの総合計 ▼▼▼ */}
+                        {USER_OPTIONS.map(user => (
+                          <td key={user}>
+                            <strong>
+                              {userSummary[user] ? userSummary[user].toLocaleString() : 0} 円
+                            </strong>
+                          </td>
+                        ))}
                       </tr>
                     </tbody>
                   </table>
