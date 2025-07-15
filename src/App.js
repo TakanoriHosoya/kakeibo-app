@@ -157,6 +157,14 @@ function App() {
       if (isNaN(recordDate.getTime())) return false;
       return recordDate.getFullYear() === targetYear && recordDate.getMonth() === targetMonth;
     });
+
+    // ▼▼▼ 日付で新しい順（降順）にソート ▼▼▼
+    filteredRecords.sort((a, b) => {
+      const dateA = new Date(a.data[1]);
+      const dateB = new Date(b.data[1]);
+      return dateB - dateA;
+    });
+
     setRecords(filteredRecords);
 
     const categoryTotals = {};
