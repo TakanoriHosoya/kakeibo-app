@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/kakeibo-app/static/css/main.74bd90a4.css",
-    "main.js": "/kakeibo-app/static/js/main.7c366348.js",
+    "main.js": "/kakeibo-app/static/js/main.1afef676.js",
     "index.html": "/kakeibo-app/index.html",
     "main.74bd90a4.css.map": "/kakeibo-app/static/css/main.74bd90a4.css.map",
-    "main.7c366348.js.map": "/kakeibo-app/static/js/main.7c366348.js.map"
+    "main.1afef676.js.map": "/kakeibo-app/static/js/main.1afef676.js.map"
   },
   "entrypoints": [
     "static/css/main.74bd90a4.css",
-    "static/js/main.7c366348.js"
+    "static/js/main.1afef676.js"
   ]
 }
