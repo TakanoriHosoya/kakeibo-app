@@ -7,7 +7,7 @@ import './App.css';
 // --- 定数設定 ---
 const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '水道・光熱費', '通信費', '保険', '税金・社会保険', 'その他'];
+const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '家賃', '水道・光熱費', '通信費', '保険', '習い事', '税金・社会保険', 'その他'];
 const PAYMENT_METHOD_OPTIONS = ['楽天Pay', '現金', '楽天カード', 'PayPay', 'Amazonカード', 'セゾンカード', '京王パスポート', 'その他'];
 const USER_OPTIONS = ['ママ', 'パパ', '家族'];
 
@@ -248,20 +248,23 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(summary).map(([category, total]) => (
-                        <tr key={category}>
-                          <td>{category}</td>
-                          <td>{total.toLocaleString()} 円</td>
-                          {/* ▼▼▼ 各利用者の金額を表示 ▼▼▼ */}
-                          {USER_OPTIONS.map(user => (
-                            <td key={user}>
-                              {categoryUserSummary[category] && categoryUserSummary[category][user]
-                                ? categoryUserSummary[category][user].toLocaleString()
-                                : 0
-                              } 円
-                            </td>
-                          ))}
-                        </tr>
+                      {/* ▼▼▼ カテゴリの並び順をCATEGORY_OPTIONS通りに修正 ▼▼▼ */}
+                      {CATEGORY_OPTIONS.map(category => (
+                        summary[category] !== undefined ? (
+                          <tr key={category}>
+                            <td>{category}</td>
+                            <td>{summary[category].toLocaleString()} 円</td>
+                            {/* ▼▼▼ 各利用者の金額を表示 ▼▼▼ */}
+                            {USER_OPTIONS.map(user => (
+                              <td key={user}>
+                                {categoryUserSummary[category] && categoryUserSummary[category][user]
+                                  ? categoryUserSummary[category][user].toLocaleString()
+                                  : 0
+                                } 円
+                              </td>
+                            ))}
+                          </tr>
+                        ) : null
                       ))}
                       <tr className="summary-total">
                         <td><strong>総合計</strong></td>
