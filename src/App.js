@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './App.css';
 
 // --- 定数設定 ---
@@ -29,10 +30,12 @@ function App() {
   const [editingRow, setEditingRow] = useState(null);
   const [editedRecord, setEditedRecord] = useState(null);
 
-  const [page, setPage] = useState('Home'); // 'Home' or 'History'
+  const [page, setPage] = useState('Home'); // 'Home', 'History', or 'Graph'
   const [summary, setSummary] = useState({}); // カテゴリ別集計
   const [userSummary, setUserSummary] = useState({}); // 利用者別集計
   const [categoryUserSummary, setCategoryUserSummary] = useState({}); // カテゴリ×利用者集計
+  const [graphData, setGraphData] = useState([]); // グラフ用データ
+  const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS)); // 表示するカテゴリ
 
 
   // --- 関数定義 ---
@@ -134,6 +137,54 @@ function App() {
   const handleNextMonth = () => { const newDate = new Date(viewingDate); newDate.setMonth(newDate.getMonth() + 1); setViewingDate(newDate); };
   const isNextMonthDisabled = () => { const today = new Date(); return viewingDate.getFullYear() > today.getFullYear() || (viewingDate.getFullYear() === today.getFullYear() && viewingDate.getMonth() >= today.getMonth()); };
 
+  // グラフデータ生成関数
+  const generateGraphData = (records) => {
+    const monthlyData = {};
+    
+    records.forEach(record => {
+      if (!record || !record.data[1]) return;
+      const recordDate = new Date(record.data[1]);
+      if (isNaN(recordDate.getTime())) return;
+      
+      const yearMonth = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}`;
+      const category = record.data[2];
+      const amount = Number(record.data[5] || 0);
+      
+      if (!monthlyData[yearMonth]) {
+        monthlyData[yearMonth] = {
+          date: yearMonth,
+          total: 0
+        };
+        // 各カテゴリの初期値を0に設定
+        CATEGORY_OPTIONS.forEach(cat => {
+          monthlyData[yearMonth][cat] = 0;
+        });
+      }
+      
+      monthlyData[yearMonth].total += amount;
+      if (monthlyData[yearMonth][category] !== undefined) {
+        monthlyData[yearMonth][category] += amount;
+      }
+    });
+    
+    // 日付順にソート
+    return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // カテゴリの表示/非表示を切り替える関数
+  const toggleCategory = (category) => {
+    const newVisibleCategories = new Set(visibleCategories);
+    if (newVisibleCategories.has(category)) {
+      // そのカテゴリのみを表示（他を非表示）
+      newVisibleCategories.clear();
+      newVisibleCategories.add(category);
+    } else {
+      // 全カテゴリを表示
+      CATEGORY_OPTIONS.forEach(cat => newVisibleCategories.add(cat));
+    }
+    setVisibleCategories(newVisibleCategories);
+  };
+
   // --- Effectフック ---
   useEffect(() => {
     const loadGapiAndRestoreLogin = async () => {
@@ -200,6 +251,9 @@ function App() {
     setUserSummary(userTotals);
     setCategoryUserSummary(categoryUserTotals);
 
+    // グラフデータを更新（全レコードから生成）
+    setGraphData(generateGraphData(allRecords));
+
   }, [allRecords, viewingDate, isLoggedIn]);
 
   // --- JSX (画面描画) ---
@@ -216,6 +270,7 @@ function App() {
           <nav className="main-nav">
             <button onClick={() => setPage('Home')} className={page === 'Home' ? 'active' : ''}>Home</button>
             <button onClick={() => setPage('History')} className={page === 'History' ? 'active' : ''}>履歴</button>
+            <button onClick={() => setPage('Graph')} className={page === 'Graph' ? 'active' : ''}>グラフ</button>
           </nav>
           
           <main>
@@ -285,6 +340,55 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+              </section>
+            )}
+
+            {page === 'Graph' && (
+              <section className="graph-section">
+                <h3>月別支出合計グラフ</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={graphData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="total" stroke="#8884d8" name="月別合計" />
+                  </LineChart>
+                </ResponsiveContainer>
+
+                <h3>カテゴリ別支出合計グラフ</h3>
+                <div className="category-toggles">
+                  {CATEGORY_OPTIONS.map(category => (
+                    <button
+                      key={category}
+                      className={`category-toggle ${visibleCategories.has(category) ? 'active' : 'inactive'}`}
+                      onClick={() => toggleCategory(category)}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={graphData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    {CATEGORY_OPTIONS.map((category, index) => (
+                      visibleCategories.has(category) && (
+                        <Line 
+                          key={category} 
+                          type="monotone" 
+                          dataKey={category} 
+                          stroke={`hsl(${(index * 25) % 360}, 70%, 50%)`} 
+                          name={category} 
+                        />
+                      )
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
               </section>
             )}
 
