@@ -30,13 +30,18 @@ function App() {
   const [editingRow, setEditingRow] = useState(null);
   const [editedRecord, setEditedRecord] = useState(null);
 
-  const [page, setPage] = useState('Home'); // 'Home', 'History', or 'Graph'
-  const [paymentFilter, setPaymentFilter] = useState('すべて'); // ★支払方法フィルター
-  const [summary, setSummary] = useState({}); // カテゴリ別集計
-  const [userSummary, setUserSummary] = useState({}); // 利用者別集計
-  const [categoryUserSummary, setCategoryUserSummary] = useState({}); // カテゴリ×利用者集計
-  const [graphData, setGraphData] = useState([]); // グラフ用データ
-  const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS)); // 表示するカテゴリ
+  const [page, setPage] = useState('Home');
+
+  // ★ フィルター state（3種類）
+  const [filterCategory, setFilterCategory] = useState('すべて');
+  const [filterUser, setFilterUser] = useState('すべて');
+  const [filterPayment, setFilterPayment] = useState('すべて');
+
+  const [summary, setSummary] = useState({});
+  const [userSummary, setUserSummary] = useState({});
+  const [categoryUserSummary, setCategoryUserSummary] = useState({});
+  const [graphData, setGraphData] = useState([]);
+  const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS));
 
 
   // --- 関数定義 ---
@@ -138,52 +143,47 @@ function App() {
   const handleNextMonth = () => { const newDate = new Date(viewingDate); newDate.setMonth(newDate.getMonth() + 1); setViewingDate(newDate); };
   const isNextMonthDisabled = () => { const today = new Date(); return viewingDate.getFullYear() > today.getFullYear() || (viewingDate.getFullYear() === today.getFullYear() && viewingDate.getMonth() >= today.getMonth()); };
 
+  // フィルターをすべてリセット
+  const resetFilters = () => {
+    setFilterCategory('すべて');
+    setFilterUser('すべて');
+    setFilterPayment('すべて');
+  };
+
+  // アクティブなフィルター数（リセットリンクの表示判定用）
+  const activeFilterCount = [filterCategory, filterUser, filterPayment].filter(v => v !== 'すべて').length;
+
   // グラフデータ生成関数
   const generateGraphData = (records) => {
     const monthlyData = {};
-    
     records.forEach(record => {
       if (!record || !record.data[1]) return;
       const recordDate = new Date(record.data[1]);
       if (isNaN(recordDate.getTime())) return;
-      
       const yearMonth = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}`;
-      const category = record.data[2];
-      const amount = Number(record.data[5] || 0);
-      
+      const cat = record.data[2];
+      const amt = Number(record.data[5] || 0);
       if (!monthlyData[yearMonth]) {
-        monthlyData[yearMonth] = {
-          date: yearMonth,
-          total: 0
-        };
-        // 各カテゴリの初期値を0に設定
-        CATEGORY_OPTIONS.forEach(cat => {
-          monthlyData[yearMonth][cat] = 0;
-        });
+        monthlyData[yearMonth] = { date: yearMonth, total: 0 };
+        CATEGORY_OPTIONS.forEach(c => { monthlyData[yearMonth][c] = 0; });
       }
-      
-      monthlyData[yearMonth].total += amount;
-      if (monthlyData[yearMonth][category] !== undefined) {
-        monthlyData[yearMonth][category] += amount;
+      monthlyData[yearMonth].total += amt;
+      if (monthlyData[yearMonth][cat] !== undefined) {
+        monthlyData[yearMonth][cat] += amt;
       }
     });
-    
-    // 日付順にソート
     return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  // カテゴリの表示/非表示を切り替える関数
-  const toggleCategory = (category) => {
-    const newVisibleCategories = new Set(visibleCategories);
-    if (newVisibleCategories.has(category)) {
-      // そのカテゴリのみを表示（他を非表示）
-      newVisibleCategories.clear();
-      newVisibleCategories.add(category);
+  const toggleCategory = (cat) => {
+    const next = new Set(visibleCategories);
+    if (next.has(cat)) {
+      next.clear();
+      next.add(cat);
     } else {
-      // 全カテゴリを表示
-      CATEGORY_OPTIONS.forEach(cat => newVisibleCategories.add(cat));
+      CATEGORY_OPTIONS.forEach(c => next.add(c));
     }
-    setVisibleCategories(newVisibleCategories);
+    setVisibleCategories(next);
   };
 
   // --- Effectフック ---
@@ -202,9 +202,9 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    const targetYear = viewingDate.getFullYear(); const targetMonth = viewingDate.getMonth();
+    const targetYear = viewingDate.getFullYear();
+    const targetMonth = viewingDate.getMonth();
     
-    // 表示用レコードのフィルタリング
     const filteredRecords = allRecords.filter(record => {
       if (!record || !record.data[1]) return false;
       const recordDate = new Date(record.data[1]);
@@ -212,60 +212,44 @@ function App() {
       return recordDate.getFullYear() === targetYear && recordDate.getMonth() === targetMonth;
     });
 
-    // ▼▼▼ 日付で新しい順（降順）にソート ▼▼▼
-    filteredRecords.sort((a, b) => {
-      const dateA = new Date(a.data[1]);
-      const dateB = new Date(b.data[1]);
-      return dateB - dateA;
-    });
-
+    filteredRecords.sort((a, b) => new Date(b.data[1]) - new Date(a.data[1]));
     setRecords(filteredRecords);
 
     const categoryTotals = {};
     const userTotals = {};
     const categoryUserTotals = {};
     filteredRecords.forEach(record => {
-      const category = record.data[2];
-      const user = record.data[4];
-      const amount = Number(record.data[5] || 0);
-
-      // カテゴリ集計
-      if (category in categoryTotals) {
-        categoryTotals[category] += amount;
-      } else {
-        categoryTotals[category] = amount;
-      }
-
-      // 利用者集計
-      if (user in userTotals) {
-        userTotals[user] += amount;
-      } else {
-        userTotals[user] = amount;
-      }
-
-      // カテゴリ×利用者集計
-      if (!categoryUserTotals[category]) categoryUserTotals[category] = {};
-      if (!categoryUserTotals[category][user]) categoryUserTotals[category][user] = 0;
-      categoryUserTotals[category][user] += amount;
+      const cat = record.data[2];
+      const usr = record.data[4];
+      const amt = Number(record.data[5] || 0);
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+      userTotals[usr] = (userTotals[usr] || 0) + amt;
+      if (!categoryUserTotals[cat]) categoryUserTotals[cat] = {};
+      categoryUserTotals[cat][usr] = (categoryUserTotals[cat][usr] || 0) + amt;
     });
     setSummary(categoryTotals);
     setUserSummary(userTotals);
     setCategoryUserSummary(categoryUserTotals);
-
-    // グラフデータを更新（全レコードから生成）
     setGraphData(generateGraphData(allRecords));
-
   }, [allRecords, viewingDate, isLoggedIn]);
 
-  // ★ 支払方法フィルタリング済みレコード（Homeページのリスト表示用）
-  const filteredByPayment = paymentFilter === 'すべて'
-    ? records
-    : records.filter(r => r.data[3] === paymentFilter);
+  // ★ 3つのフィルターを組み合わせて絞り込み
+  const filteredRecords = records.filter(record => {
+    if (filterCategory !== 'すべて' && record.data[2] !== filterCategory) return false;
+    if (filterUser !== 'すべて' && record.data[4] !== filterUser) return false;
+    if (filterPayment !== 'すべて' && record.data[3] !== filterPayment) return false;
+    return true;
+  });
+
+  const filteredTotal = filteredRecords.reduce((sum, r) => sum + Number(r.data[5] || 0), 0);
 
   // --- JSX (画面描画) ---
   return (
     <div className="container">
-      <header><h1>細矢さん 家計簿</h1>{isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}</header>
+      <header>
+        <h1>細矢さん 家計簿</h1>
+        {isLoggedIn && (<button onClick={handleLogout} className="logout-button">ログアウト</button>)}
+      </header>
       
       {isLoading ? (
         <div className="loading-container"><p>読み込み中...</p></div>
@@ -302,26 +286,19 @@ function App() {
                       <tr>
                         <th>カテゴリ</th>
                         <th>合計金額</th>
-                        {/* ▼▼▼ 利用者ごとにヘッダーを表示 ▼▼▼ */}
-                        {USER_OPTIONS.map(user => (
-                          <th key={user}>{user}</th>
-                        ))}
+                        {USER_OPTIONS.map(u => <th key={u}>{u}</th>)}
                       </tr>
                     </thead>
                     <tbody>
-                      {/* ▼▼▼ カテゴリの並び順をCATEGORY_OPTIONS通りに修正 ▼▼▼ */}
-                      {CATEGORY_OPTIONS.map(category => (
-                        summary[category] !== undefined ? (
-                          <tr key={category}>
-                            <td>{category}</td>
-                            <td>{summary[category].toLocaleString()} 円</td>
-                            {/* ▼▼▼ 各利用者の金額を表示 ▼▼▼ */}
-                            {USER_OPTIONS.map(user => (
-                              <td key={user}>
-                                {categoryUserSummary[category] && categoryUserSummary[category][user]
-                                  ? categoryUserSummary[category][user].toLocaleString()
-                                  : 0
-                                } 円
+                      {CATEGORY_OPTIONS.map(cat => (
+                        summary[cat] !== undefined ? (
+                          <tr key={cat}>
+                            <td>{cat}</td>
+                            <td>{summary[cat].toLocaleString()} 円</td>
+                            {USER_OPTIONS.map(u => (
+                              <td key={u}>
+                                {categoryUserSummary[cat] && categoryUserSummary[cat][u]
+                                  ? categoryUserSummary[cat][u].toLocaleString() : 0} 円
                               </td>
                             ))}
                           </tr>
@@ -329,18 +306,9 @@ function App() {
                       ))}
                       <tr className="summary-total">
                         <td><strong>総合計</strong></td>
-                        <td>
-                          <strong>
-                            {Object.values(summary).reduce((acc, cur) => acc + cur, 0).toLocaleString()} 円
-                          </strong>
-                        </td>
-                        {/* ▼▼▼ 利用者ごとの総合計 ▼▼▼ */}
-                        {USER_OPTIONS.map(user => (
-                          <td key={user}>
-                            <strong>
-                              {userSummary[user] ? userSummary[user].toLocaleString() : 0} 円
-                            </strong>
-                          </td>
+                        <td><strong>{Object.values(summary).reduce((acc, cur) => acc + cur, 0).toLocaleString()} 円</strong></td>
+                        {USER_OPTIONS.map(u => (
+                          <td key={u}><strong>{userSummary[u] ? userSummary[u].toLocaleString() : 0} 円</strong></td>
                         ))}
                       </tr>
                     </tbody>
@@ -365,13 +333,13 @@ function App() {
 
                 <h3>カテゴリ別支出合計グラフ</h3>
                 <div className="category-toggles">
-                  {CATEGORY_OPTIONS.map(category => (
+                  {CATEGORY_OPTIONS.map(cat => (
                     <button
-                      key={category}
-                      className={`category-toggle ${visibleCategories.has(category) ? 'active' : 'inactive'}`}
-                      onClick={() => toggleCategory(category)}
+                      key={cat}
+                      className={`category-toggle ${visibleCategories.has(cat) ? 'active' : 'inactive'}`}
+                      onClick={() => toggleCategory(cat)}
                     >
-                      {category}
+                      {cat}
                     </button>
                   ))}
                 </div>
@@ -382,15 +350,9 @@ function App() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    {CATEGORY_OPTIONS.map((category, index) => (
-                      visibleCategories.has(category) && (
-                        <Line 
-                          key={category} 
-                          type="monotone" 
-                          dataKey={category} 
-                          stroke={`hsl(${(index * 25) % 360}, 70%, 50%)`} 
-                          name={category} 
-                        />
+                    {CATEGORY_OPTIONS.map((cat, index) => (
+                      visibleCategories.has(cat) && (
+                        <Line key={cat} type="monotone" dataKey={cat} stroke={`hsl(${(index * 25) % 360}, 70%, 50%)`} name={cat} />
                       )
                     ))}
                   </LineChart>
@@ -398,7 +360,7 @@ function App() {
               </section>
             )}
 
-            {/* ★★★ 月別リスト（Home・History・Graph 全ページで表示） ★★★ */}
+            {/* 月別リスト（全ページ共通） */}
             <section className="records-section">
               <div className="month-navigator">
                 <button onClick={handlePrevMonth}>&lt; 先月</button>
@@ -406,76 +368,141 @@ function App() {
                 <button onClick={handleNextMonth} disabled={isNextMonthDisabled()}>翌月 &gt;</button>
               </div>
 
-              {/* ★★★ 支払方法フィルターUI ★★★ */}
-              <div className="payment-filter">
-                <button
-                  className={`filter-btn ${paymentFilter === 'すべて' ? 'active' : ''}`}
-                  onClick={() => setPaymentFilter('すべて')}
-                >
-                  すべて
-                </button>
-                {PAYMENT_METHOD_OPTIONS.map(method => (
-                  <button
-                    key={method}
-                    className={`filter-btn ${paymentFilter === method ? 'active' : ''}`}
-                    onClick={() => setPaymentFilter(method)}
-                  >
-                    {method}
-                  </button>
-                ))}
+              {/* ★ フィルターパネル */}
+              <div className="filter-panel">
+                <div className="filter-panel-header">
+                  <span className="filter-panel-title">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{flexShrink:0, marginRight:5, verticalAlign:'middle'}}>
+                      <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    絞り込み
+                  </span>
+                  {activeFilterCount > 0 && (
+                    <button className="filter-reset-btn" onClick={resetFilters}>リセット</button>
+                  )}
+                </div>
+
+                <div className="filter-selects">
+                  <div className="filter-select-wrap">
+                    <select
+                      className={`filter-select ${filterCategory !== 'すべて' ? 'filter-select--active' : ''}`}
+                      value={filterCategory}
+                      onChange={e => setFilterCategory(e.target.value)}
+                    >
+                      <option value="すべて">カテゴリ：すべて</option>
+                      {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                    <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
+                      <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  <div className="filter-select-wrap">
+                    <select
+                      className={`filter-select ${filterUser !== 'すべて' ? 'filter-select--active' : ''}`}
+                      value={filterUser}
+                      onChange={e => setFilterUser(e.target.value)}
+                    >
+                      <option value="すべて">利用者：すべて</option>
+                      {USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                    <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
+                      <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  <div className="filter-select-wrap">
+                    <select
+                      className={`filter-select ${filterPayment !== 'すべて' ? 'filter-select--active' : ''}`}
+                      value={filterPayment}
+                      onChange={e => setFilterPayment(e.target.value)}
+                    >
+                      <option value="すべて">支払方法：すべて</option>
+                      {PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                    <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
+                      <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* アクティブフィルタータグ＋件数合計 */}
+                {activeFilterCount > 0 && (
+                  <div className="filter-status">
+                    <div className="filter-tags">
+                      {filterCategory !== 'すべて' && (
+                        <span className="filter-tag">
+                          {filterCategory}
+                          <button className="filter-tag-remove" onClick={() => setFilterCategory('すべて')}>×</button>
+                        </span>
+                      )}
+                      {filterUser !== 'すべて' && (
+                        <span className="filter-tag">
+                          {filterUser}
+                          <button className="filter-tag-remove" onClick={() => setFilterUser('すべて')}>×</button>
+                        </span>
+                      )}
+                      {filterPayment !== 'すべて' && (
+                        <span className="filter-tag">
+                          {filterPayment}
+                          <button className="filter-tag-remove" onClick={() => setFilterPayment('すべて')}>×</button>
+                        </span>
+                      )}
+                    </div>
+                    <div className="filter-result-summary">
+                      {filteredRecords.length}件 ／ <span className="filter-result-total">{filteredTotal.toLocaleString()}円</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* ★ フィルター件数・合計表示 */}
-              {paymentFilter !== 'すべて' && (
-                <div className="filter-summary">
-                  <span className="filter-label">「{paymentFilter}」</span>
-                  <span>：{filteredByPayment.length}件 ／ </span>
-                  <span className="filter-total">
-                    {filteredByPayment.reduce((sum, r) => sum + Number(r.data[5] || 0), 0).toLocaleString()} 円
-                  </span>
-                </div>
-              )}
-
               <div className="records-table">
-                  <table>
-                    {/* ▼▼▼ テーブルヘッダーに「利用者」を追加 ▼▼▼ */}
-                    <thead><tr><th>日付</th><th>カテゴリ</th><th>利用者</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th></tr></thead>
-                    <tbody>
-                      {filteredByPayment.map((record) => (
-                        editingRow && editingRow.rowNumber === record.rowNumber ? (
-                          <tr key={record.rowNumber} className="editing-row">
-                            <td><input type="date" value={editedRecord[1]} onChange={(e) => handleEditChange(e, 1)} /></td>
-                            <td><select value={editedRecord[2]} onChange={(e) => handleEditChange(e, 2)}>{CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
-                            {/* ▼▼▼ 編集中フォームに「利用者」を追加 ▼▼▼ */}
-                            <td><select value={editedRecord[4]} onChange={(e) => handleEditChange(e, 4)}>{USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
-                            <td><select value={editedRecord[3]} onChange={(e) => handleEditChange(e, 3)}>{PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
-                            <td><input type="number" value={editedRecord[5]} onChange={(e) => handleEditChange(e, 5)} className="amount-input" /></td>
-                            <td><input type="text" value={editedRecord[6]} onChange={(e) => handleEditChange(e, 6)} /></td>
-                            <td><button onClick={handleSave} className="action-button save-button">✔️</button><button onClick={handleCancel} className="action-button cancel-button">✖️</button></td>
-                          </tr>
-                        ) : (
-                          <tr key={record.rowNumber}>
-                            <td>{new Date(record.data[1]).toLocaleDateString()}</td>
-                            <td>{record.data[2]}</td>
-                            {/* ▼▼▼ 表示に「利用者」を追加 ▼▼▼ */}
-                            <td>{record.data[4]}</td>
-                            <td>{record.data[3]}</td>
-                            <td>{Number(record.data[5] || 0).toLocaleString()} 円</td>
-                            <td>{record.data[6]}</td>
-                            <td><button onClick={() => handleEdit(record)} className="action-button edit-button">✏️</button><button onClick={() => handleDelete(record)} className="action-button delete-button">🗑️</button></td>
-                          </tr>
-                        )
-                      ))}
-                      {filteredByPayment.length === 0 && (
-                        <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', color: '#999', padding: '24px' }}>
-                            {paymentFilter === 'すべて' ? 'この月の記録はありません' : `「${paymentFilter}」の記録はありません`}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>日付</th><th>カテゴリ</th><th>利用者</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.map((record) => (
+                      editingRow && editingRow.rowNumber === record.rowNumber ? (
+                        <tr key={record.rowNumber} className="editing-row">
+                          <td><input type="date" value={editedRecord[1]} onChange={(e) => handleEditChange(e, 1)} /></td>
+                          <td><select value={editedRecord[2]} onChange={(e) => handleEditChange(e, 2)}>{CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><select value={editedRecord[4]} onChange={(e) => handleEditChange(e, 4)}>{USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><select value={editedRecord[3]} onChange={(e) => handleEditChange(e, 3)}>{PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><input type="number" value={editedRecord[5]} onChange={(e) => handleEditChange(e, 5)} className="amount-input" /></td>
+                          <td><input type="text" value={editedRecord[6]} onChange={(e) => handleEditChange(e, 6)} /></td>
+                          <td>
+                            <button onClick={handleSave} className="action-button save-button">✔️</button>
+                            <button onClick={handleCancel} className="action-button cancel-button">✖️</button>
                           </td>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ) : (
+                        <tr key={record.rowNumber}>
+                          <td>{new Date(record.data[1]).toLocaleDateString()}</td>
+                          <td>{record.data[2]}</td>
+                          <td>{record.data[4]}</td>
+                          <td>{record.data[3]}</td>
+                          <td>{Number(record.data[5] || 0).toLocaleString()} 円</td>
+                          <td>{record.data[6]}</td>
+                          <td>
+                            <button onClick={() => handleEdit(record)} className="action-button edit-button">✏️</button>
+                            <button onClick={() => handleDelete(record)} className="action-button delete-button">🗑️</button>
+                          </td>
+                        </tr>
+                      )
+                    ))}
+                    {filteredRecords.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="records-empty">
+                          {activeFilterCount > 0 ? '絞り込み条件に一致する記録がありません' : 'この月の記録はありません'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </main>
         </>
