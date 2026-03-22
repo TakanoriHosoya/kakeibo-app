@@ -31,6 +31,7 @@ function App() {
   const [editedRecord, setEditedRecord] = useState(null);
 
   const [page, setPage] = useState('Home'); // 'Home', 'History', or 'Graph'
+  const [paymentFilter, setPaymentFilter] = useState('すべて'); // ★支払方法フィルター
   const [summary, setSummary] = useState({}); // カテゴリ別集計
   const [userSummary, setUserSummary] = useState({}); // 利用者別集計
   const [categoryUserSummary, setCategoryUserSummary] = useState({}); // カテゴリ×利用者集計
@@ -256,6 +257,11 @@ function App() {
 
   }, [allRecords, viewingDate, isLoggedIn]);
 
+  // ★ 支払方法フィルタリング済みレコード（Homeページのリスト表示用）
+  const filteredByPayment = paymentFilter === 'すべて'
+    ? records
+    : records.filter(r => r.data[3] === paymentFilter);
+
   // --- JSX (画面描画) ---
   return (
     <div className="container">
@@ -392,18 +398,50 @@ function App() {
               </section>
             )}
 
+            {/* ★★★ 月別リスト（Home・History・Graph 全ページで表示） ★★★ */}
             <section className="records-section">
               <div className="month-navigator">
                 <button onClick={handlePrevMonth}>&lt; 先月</button>
                 <h3>{viewingDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })} の記録</h3>
                 <button onClick={handleNextMonth} disabled={isNextMonthDisabled()}>翌月 &gt;</button>
               </div>
+
+              {/* ★★★ 支払方法フィルターUI ★★★ */}
+              <div className="payment-filter">
+                <button
+                  className={`filter-btn ${paymentFilter === 'すべて' ? 'active' : ''}`}
+                  onClick={() => setPaymentFilter('すべて')}
+                >
+                  すべて
+                </button>
+                {PAYMENT_METHOD_OPTIONS.map(method => (
+                  <button
+                    key={method}
+                    className={`filter-btn ${paymentFilter === method ? 'active' : ''}`}
+                    onClick={() => setPaymentFilter(method)}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
+
+              {/* ★ フィルター件数・合計表示 */}
+              {paymentFilter !== 'すべて' && (
+                <div className="filter-summary">
+                  <span className="filter-label">「{paymentFilter}」</span>
+                  <span>：{filteredByPayment.length}件 ／ </span>
+                  <span className="filter-total">
+                    {filteredByPayment.reduce((sum, r) => sum + Number(r.data[5] || 0), 0).toLocaleString()} 円
+                  </span>
+                </div>
+              )}
+
               <div className="records-table">
                   <table>
                     {/* ▼▼▼ テーブルヘッダーに「利用者」を追加 ▼▼▼ */}
                     <thead><tr><th>日付</th><th>カテゴリ</th><th>利用者</th><th>支払方法</th><th>金額</th><th>内容</th><th>操作</th></tr></thead>
                     <tbody>
-                      {records.map((record) => (
+                      {filteredByPayment.map((record) => (
                         editingRow && editingRow.rowNumber === record.rowNumber ? (
                           <tr key={record.rowNumber} className="editing-row">
                             <td><input type="date" value={editedRecord[1]} onChange={(e) => handleEditChange(e, 1)} /></td>
@@ -428,6 +466,13 @@ function App() {
                           </tr>
                         )
                       ))}
+                      {filteredByPayment.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', color: '#999', padding: '24px' }}>
+                            {paymentFilter === 'すべて' ? 'この月の記録はありません' : `「${paymentFilter}」の記録はありません`}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

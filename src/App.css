@@ -222,95 +222,87 @@ tbody tr:hover {
 /* =================================== */
 @media (max-width: 768px) {
 
-  /* ★★★ 基準のフォントサイズを、読みやすい16pxに設定 ★★★ */
   html {
-    font-size: 16px; /* ユーザーのブラウザ設定を基本とする */
+    font-size: 16px;
   }
   
   body {
-    font-size: 1rem; /* body自体はhtmlのサイズ(16px)を継承 */
+    font-size: 1rem;
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
   }
   .container { padding: 0 16px; }
 
-  /* ★★★ ヘッダーを見やすく ★★★ */
   header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 16px 0;
   }
-  header h1 { font-size: 1.5rem; /* 24px */ }
+  header h1 { font-size: 1.5rem; }
   .logout-button {
     position: static;
     transform: none;
-    font-size: 0.9rem; /* 14.4px */
+    font-size: 0.9rem;
     padding: 10px 12px;
     border-radius: 20px;
   }
   
-  /* ★★★ ログインボタンを調整 ★★★ */
   .login-button {
-    font-size: 1.1rem; /* 17.6px */
+    font-size: 1.1rem;
     padding: 14px 22px;
     border-radius: 24px;
   }
 
-  /* ★★★ ナビゲーションを調整 ★★★ */
   .main-nav { margin-bottom: 20px; }
   .main-nav button {
-    font-size: 1.15rem; /* 18.4px */
+    font-size: 1.15rem;
     padding: 16px 10px;
     flex: 1;
   }
 
-  /* ★★★ フォームを調整 ★★★ */
   .entry-form, .records-section, .summary-section {
     padding: 20px;
     border-radius: 12px;
     margin-bottom: 24px;
   }
   .form-group label {
-    font-size: 1rem; /* 16px */
+    font-size: 1rem;
     margin-bottom: 8px;
   }
   .form-group input, 
   .form-group select {
     padding: 14px 16px;
-    font-size: 1rem;  /* 16px */
+    font-size: 1rem;
     border-radius: 8px;
   }
   .entry-form button[type="submit"] {
-    font-size: 1.1rem; /* 17.6px */
+    font-size: 1.1rem;
     padding: 16px 24px;
     border-radius: 8px;
   }
   
-  /* ★★★ 月ナビゲーションを調整 ★★★ */
   .month-navigator {
     margin-bottom: 16px;
-    padding: 0; /* ★横の余白を削除してスペースを確保 */
+    padding: 0;
   }
   .month-navigator h3 {
-    font-size: 1.1rem; /* ★少し小さくしてバランスを取る */
-    margin: 0 8px; /* ★左右に少し余白 */
+    font-size: 1.1rem;
+    margin: 0 8px;
   }
   .month-navigator button {
-    font-size: 0.9rem; /* ★ボタンの文字を小さく */
-    padding: 8px 12px; /* ★ボタンの余白を小さく */
-    flex-shrink: 0; /* ★ボタンが潰れないようにする */
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    flex-shrink: 0;
   }
   
-  /* ★★★ テーブルの文字と余白を調整 ★★★ */
   th, td {
     padding: 14px 10px;
-    font-size: 1rem;  /* 16px */
+    font-size: 1rem;
     vertical-align: middle;
-    white-space: nowrap; /* ★デフォルトでは折り返さない */
+    white-space: nowrap;
   }
 
-  /* ★★★ 「内容」列は、内容が長くても全て表示されるように設定（列番号を6に変更） ★★★ */
   th:nth-child(6),
   td:nth-child(6) {
       white-space: normal;
@@ -318,14 +310,12 @@ tbody tr:hover {
       word-break: break-all;
   }
 
-  /* ★★★ カテゴリ列も少し折り返しを考慮 ★★★ */
   th:nth-child(2),
   td:nth-child(2) {
     white-space: normal;
     min-width: 90px;
   }
 
-  /* ★★★【NEW】利用者列のスタイルを追加 ★★★ */
   th:nth-child(3),
   td:nth-child(3) {
       white-space: normal;
@@ -333,7 +323,7 @@ tbody tr:hover {
   }
 
   th {
-    font-size: 0.9rem; /* 14.4px */
+    font-size: 0.9rem;
   }
   .summary-section h3, .records-section h3 {
     font-size: 1.3rem;
@@ -344,9 +334,8 @@ tbody tr:hover {
     font-size: 1.1rem;
   }
 
-  /* ★★★ 編集・削除ボタンを調整 ★★★ */
   .action-button {
-    font-size: 1.4rem; /* 22.4px */
+    font-size: 1.4rem;
     padding: 10px;
   }
   
@@ -375,7 +364,6 @@ tbody tr:hover {
   margin-bottom: 30px;
 }
 
-/* グラフのレスポンシブ対応 */
 @media (max-width: 768px) {
   .graph-section {
     padding: 10px;
@@ -424,7 +412,6 @@ tbody tr:hover {
   border-color: #ddd;
 }
 
-/* モバイル対応 */
 @media (max-width: 768px) {
   .category-toggles {
     gap: 6px;
@@ -434,5 +421,75 @@ tbody tr:hover {
     padding: 6px 10px;
     font-size: 11px;
     min-width: 70px;
+  }
+}
+
+/* =================================== */
+/* ★★★ 支払方法フィルター ★★★ */
+/* =================================== */
+.payment-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-btn {
+  padding: 6px 14px;
+  border: 1.5px solid #dadce0;
+  border-radius: 20px;
+  background: white;
+  color: #5f6368;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  border-color: #1a73e8;
+  color: #1a73e8;
+  background: #f0f6ff;
+}
+
+.filter-btn.active {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  background: #f0f6ff;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #444;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #1a73e8;
+}
+
+.filter-total {
+  font-weight: 700;
+  color: #d93025;
+}
+
+@media (max-width: 768px) {
+  .payment-filter {
+    gap: 6px;
+  }
+  .filter-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  .filter-summary {
+    font-size: 13px;
   }
 }
