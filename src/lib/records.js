@@ -15,6 +15,19 @@ export const COL = {
 // フィルタの「絞り込まない」を表す値
 export const FILTER_ALL = 'すべて';
 
+// 入力フォームの内容をスプレッドシート1行分の配列に組み立てる
+export function buildRecordRow({ date, category, paymentMethod, user, amount, description }, timestamp = new Date()) {
+  const row = [];
+  row[COL.TIMESTAMP] = timestamp.toISOString();
+  row[COL.DATE] = date;
+  row[COL.CATEGORY] = category;
+  row[COL.PAYMENT] = paymentMethod;
+  row[COL.USER] = user;
+  row[COL.AMOUNT] = amount;
+  row[COL.DESCRIPTION] = description;
+  return row;
+}
+
 // 指定した年月の記録だけを、日付の新しい順に返す
 export function filterRecordsByMonth(records, viewingDate) {
   const targetYear = viewingDate.getFullYear();

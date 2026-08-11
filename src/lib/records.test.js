@@ -1,6 +1,7 @@
 import {
   COL,
   FILTER_ALL,
+  buildRecordRow,
   filterRecordsByMonth,
   summarizeRecords,
   generateGraphData,
@@ -16,6 +17,41 @@ const rec = (rowNumber, date, category, payment, user, amount, description = '')
 });
 
 const CATEGORIES = ['食費', '日用品', '交通費'];
+
+describe('buildRecordRow', () => {
+  const input = {
+    date: '2026-08-11',
+    category: '食費',
+    paymentMethod: '楽天Pay',
+    user: 'ママ',
+    amount: '1500',
+    description: 'スーパーでの買い物',
+  };
+
+  test('入力内容を列の並びどおりに配置する', () => {
+    const row = buildRecordRow(input, new Date('2026-08-11T12:34:56.000Z'));
+    expect(row).toEqual([
+      '2026-08-11T12:34:56.000Z',
+      '2026-08-11',
+      '食費',
+      '楽天Pay',
+      'ママ',
+      '1500',
+      'スーパーでの買い物',
+    ]);
+  });
+
+  test('登録日時は ISO 文字列で入る', () => {
+    const row = buildRecordRow(input, new Date('2026-08-11T12:34:56.000Z'));
+    expect(row[COL.TIMESTAMP]).toBe('2026-08-11T12:34:56.000Z');
+  });
+
+  test('内容が空でも列は詰めない', () => {
+    const row = buildRecordRow({ ...input, description: '' });
+    expect(row).toHaveLength(7);
+    expect(row[COL.DESCRIPTION]).toBe('');
+  });
+});
 
 describe('filterRecordsByMonth', () => {
   const records = [
