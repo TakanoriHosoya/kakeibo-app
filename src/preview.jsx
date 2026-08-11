@@ -73,6 +73,20 @@ if (params.get('edit')) {
   clickWhenReady('.edit-button', () => true);
 }
 
+// 絞り込みを操作した状態にする。?filter=open なら一覧を開いたまま、?filter=tags なら閉じる
+const filterState = params.get('filter');
+if (filterState) {
+  clickWhenReady('.filter-select', b => b.textContent.startsWith('カテゴリ'));
+  setTimeout(() => {
+    document.querySelectorAll('.filter-option input').forEach((input, index) => {
+      if (index === 0 || index === 3) input.click();
+    });
+    if (filterState === 'tags') {
+      document.querySelector('.filter-select').click();
+    }
+  }, 300);
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId="preview-client-id">

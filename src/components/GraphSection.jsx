@@ -1,6 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CATEGORY_OPTIONS } from '../constants';
-import { FILTER_ALL } from '../lib/records';
 
 // 目盛りは「100000」だと横幅を食って読みにくいので万単位に丸める（スマホ対策）
 const formatTick = (value) => {
@@ -15,7 +14,7 @@ const formatTooltip = (value) => `${Number(value).toLocaleString()} 円`;
 // 月別の合計とカテゴリ別内訳の折れ線グラフ。
 // 表示するカテゴリの選択は App が持つ（ページを切り替えても選択が残るようにするため）。
 function GraphSection({ graphData, filters, visibleCategories, onToggleCategory }) {
-  const activeFilters = Object.values(filters).filter(value => value !== FILTER_ALL);
+  const activeFilters = Object.values(filters).flat();
 
   return (
     <section className="graph-section">

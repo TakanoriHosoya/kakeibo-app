@@ -1,6 +1,6 @@
 import {
   COL,
-  FILTER_ALL,
+  NO_FILTERS,
   buildRecordRow,
   filterRecordsByMonth,
   summarizeRecords,
@@ -8,6 +8,7 @@ import {
   applyFilters,
   sumAmount,
   countActiveFilters,
+  toggleFilterValue,
   rowsMatch,
 } from './records';
 
@@ -219,35 +220,71 @@ describe('applyFilters', () => {
     rec(3, '2026-08-06', '食費', 'PayPay', 'パパ', '2000'),
     rec(4, '2026-08-07', '日用品', '現金', 'ママ', '3000'),
   ];
-  const noFilter = { category: FILTER_ALL, user: FILTER_ALL, payment: FILTER_ALL };
-
   test('すべて未指定なら全件返す', () => {
-    expect(applyFilters(records, noFilter)).toHaveLength(3);
+    expect(applyFilters(records, NO_FILTERS)).toHaveLength(3);
   });
 
   test('カテゴリで絞り込む', () => {
-    const result = applyFilters(records, { ...noFilter, category: '食費' });
+    const result = applyFilters(records, { ...NO_FILTERS, category: ['食費'] });
     expect(result.map(r => r.rowNumber)).toEqual([2, 3]);
   });
 
   test('利用者で絞り込む', () => {
-    const result = applyFilters(records, { ...noFilter, user: 'ママ' });
+    const result = applyFilters(records, { ...NO_FILTERS, user: ['ママ'] });
     expect(result.map(r => r.rowNumber)).toEqual([2, 4]);
   });
 
   test('支払方法で絞り込む', () => {
-    const result = applyFilters(records, { ...noFilter, payment: '現金' });
+    const result = applyFilters(records, { ...NO_FILTERS, payment: ['現金'] });
     expect(result.map(r => r.rowNumber)).toEqual([2, 4]);
   });
 
-  test('複数条件は AND で効く', () => {
-    const result = applyFilters(records, { category: '食費', user: 'ママ', payment: '現金' });
+  test('同じ項目で複数選ぶと、そのいずれかに一致するものを返す', () => {
+    const result = applyFilters(records, { ...NO_FILTERS, category: ['食費', '日用品'] });
+    expect(result.map(r => r.rowNumber)).toEqual([2, 3, 4]);
+
+    const byUser = applyFilters(records, { ...NO_FILTERS, user: ['ママ', 'パパ'] });
+    expect(byUser.map(r => r.rowNumber)).toEqual([2, 3, 4]);
+  });
+
+  test('別々の項目どうしは AND で効く', () => {
+    const result = applyFilters(records, { category: ['食費'], user: ['ママ'], payment: ['現金'] });
     expect(result.map(r => r.rowNumber)).toEqual([2]);
   });
 
+  test('複数選択と AND の組み合わせ', () => {
+    // 「食費 か 日用品」かつ「現金払い」
+    const result = applyFilters(records, { ...NO_FILTERS, category: ['食費', '日用品'], payment: ['現金'] });
+    expect(result.map(r => r.rowNumber)).toEqual([2, 4]);
+  });
+
   test('一致するものが無ければ空を返す', () => {
-    const result = applyFilters(records, { ...noFilter, category: '食費', user: '家族' });
+    const result = applyFilters(records, { ...NO_FILTERS, category: ['食費'], user: ['家族'] });
     expect(result).toEqual([]);
+  });
+});
+
+describe('toggleFilterValue', () => {
+  const options = ['食費', '日用品', '交通費'];
+
+  test('未選択の値を選ぶと追加される', () => {
+    expect(toggleFilterValue([], '日用品', options)).toEqual(['日用品']);
+  });
+
+  test('選択済みの値を選ぶと外れる', () => {
+    expect(toggleFilterValue(['食費', '日用品'], '食費', options)).toEqual(['日用品']);
+  });
+
+  test('選んだ順ではなく選択肢の並び順を保つ', () => {
+    const afterFirst = toggleFilterValue([], '交通費', options);
+    const afterSecond = toggleFilterValue(afterFirst, '食費', options);
+    expect(afterSecond).toEqual(['食費', '交通費']);
+  });
+
+  test('元の配列を書き換えない', () => {
+    const selected = ['食費'];
+    toggleFilterValue(selected, '日用品', options);
+    expect(selected).toEqual(['食費']);
   });
 });
 
@@ -271,11 +308,12 @@ describe('sumAmount', () => {
 
 describe('countActiveFilters', () => {
   test('未指定の数は数えない', () => {
-    expect(countActiveFilters({ category: FILTER_ALL, user: FILTER_ALL, payment: FILTER_ALL })).toBe(0);
+    expect(countActiveFilters(NO_FILTERS)).toBe(0);
   });
 
-  test('指定した条件の数を返す', () => {
-    expect(countActiveFilters({ category: '食費', user: FILTER_ALL, payment: '現金' })).toBe(2);
-    expect(countActiveFilters({ category: '食費', user: 'ママ', payment: '現金' })).toBe(3);
+  test('値を選んでいる項目の数を返す（選んだ値の数ではない）', () => {
+    expect(countActiveFilters({ category: ['食費'], user: [], payment: ['現金'] })).toBe(2);
+    expect(countActiveFilters({ category: ['食費', '日用品', '交通費'], user: [], payment: [] })).toBe(1);
+    expect(countActiveFilters({ category: ['食費'], user: ['ママ'], payment: ['現金'] })).toBe(3);
   });
 });

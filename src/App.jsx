@@ -3,7 +3,7 @@ import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import { CATEGORY_OPTIONS, PAYMENT_METHOD_OPTIONS, USER_OPTIONS, SCOPES } from './constants';
 import {
   COL,
-  FILTER_ALL,
+  NO_FILTERS,
   buildRecordRow,
   filterRecordsByMonth,
   summarizeRecords,
@@ -24,8 +24,6 @@ import RecordsTable from './components/RecordsTable';
 import Toast from './components/Toast';
 import ConfirmDialog from './components/ConfirmDialog';
 import './App.css';
-
-const NO_FILTERS = { category: FILTER_ALL, user: FILTER_ALL, payment: FILTER_ALL };
 
 const emptyForm = () => ({
   date: new Date().toLocaleDateString('sv-SE'),
@@ -183,7 +181,7 @@ function App() {
   // --- 画面の操作 ---
 
   const changeFormValue = (key, value) => setFormValues(prev => ({ ...prev, [key]: value }));
-  const changeFilter = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
+  const changeFilter = (key, values) => setFilters(prev => ({ ...prev, [key]: values }));
   const resetFilters = () => setFilters(NO_FILTERS);
 
   const changeMonth = (diff) => {

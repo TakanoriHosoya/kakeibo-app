@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 
@@ -87,17 +87,72 @@ test('保存済みトークンがあれば当月の記録が一覧に出る', as
   expect(screen.queryByText('先月以前の記録')).not.toBeInTheDocument();
 });
 
+// 絞り込み中に出る「◯件 ／ ◯円」。ボタン側にも「2件選択」と出るので要素を特定して読む
+const resultSummary = () => document.querySelector('.filter-result-summary').textContent;
+
+// 絞り込みのドロップダウンを開いて、選択肢のチェックを切り替える
+const toggleFilter = (fieldLabel, ...values) => {
+  const groupName = `${fieldLabel}で絞り込む`;
+  // 開いているボタンをもう一度押すと閉じてしまうので、閉じているときだけ押す
+  if (!screen.queryByRole('group', { name: groupName })) {
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${fieldLabel}：`) }));
+  }
+  const options = screen.getByRole('group', { name: groupName });
+  values.forEach(value => fireEvent.click(within(options).getByRole('checkbox', { name: value })));
+};
+
 test('絞り込むと該当する記録だけが残り、件数と合計が出る', async () => {
   signedIn();
   renderApp();
   await screen.findByText('スーパー');
 
-  fireEvent.change(screen.getByDisplayValue('カテゴリ：すべて'), { target: { value: '食費' } });
+  toggleFilter('カテゴリ', '食費');
 
   expect(screen.getByText('スーパー')).toBeInTheDocument();
   expect(screen.queryByText('ドラッグストア')).not.toBeInTheDocument();
-  expect(screen.getByText(/1件/)).toBeInTheDocument();
-  expect(screen.getByText('1,200円')).toBeInTheDocument();
+  expect(resultSummary()).toContain('1件');
+  expect(resultSummary()).toContain('1,200円');
+});
+
+test('同じ項目で2つ選ぶと、どちらも残る', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  toggleFilter('カテゴリ', '食費');
+  expect(screen.queryByText('ドラッグストア')).not.toBeInTheDocument();
+
+  // 開いたまま2つ目を選ぶ
+  toggleFilter('カテゴリ', '日用品');
+
+  expect(screen.getByText('スーパー')).toBeInTheDocument();
+  expect(screen.getByText('ドラッグストア')).toBeInTheDocument();
+  expect(resultSummary()).toContain('2件');
+  expect(resultSummary()).toContain('2,000円');
+});
+
+test('選び直して外すと、その条件だけ解除される', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  toggleFilter('カテゴリ', '食費', '食費');
+
+  expect(screen.getByText('スーパー')).toBeInTheDocument();
+  expect(screen.getByText('ドラッグストア')).toBeInTheDocument();
+});
+
+test('別々の項目を選ぶと両方を満たすものだけが残る', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  toggleFilter('カテゴリ', '食費');
+  toggleFilter('利用者', 'パパ');
+
+  // 食費はママの記録なので、両方を満たすものは無い
+  expect(screen.queryByText('スーパー')).not.toBeInTheDocument();
+  expect(screen.getByText('絞り込み条件に一致する記録がありません')).toBeInTheDocument();
 });
 
 test('絞り込みをリセットすると全件に戻る', async () => {
@@ -105,11 +160,25 @@ test('絞り込みをリセットすると全件に戻る', async () => {
   renderApp();
   await screen.findByText('スーパー');
 
-  fireEvent.change(screen.getByDisplayValue('カテゴリ：すべて'), { target: { value: '食費' } });
+  toggleFilter('カテゴリ', '食費');
   expect(screen.queryByText('ドラッグストア')).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'リセット' }));
   expect(screen.getByText('ドラッグストア')).toBeInTheDocument();
+});
+
+test('タグの × で選択を1つずつ外せる', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  toggleFilter('カテゴリ', '食費', '日用品');
+  expect(resultSummary()).toContain('2件');
+
+  fireEvent.click(screen.getByRole('button', { name: '日用品の絞り込みを外す' }));
+
+  expect(screen.getByText('スーパー')).toBeInTheDocument();
+  expect(screen.queryByText('ドラッグストア')).not.toBeInTheDocument();
 });
 
 test('履歴ページにカテゴリ別の集計が出る', async () => {
@@ -226,8 +295,8 @@ test('絞り込み中はグラフにその条件が反映されていること�
   renderApp();
   await screen.findByText('スーパー');
 
-  fireEvent.change(screen.getByDisplayValue('カテゴリ：すべて'), { target: { value: '食費' } });
+  toggleFilter('カテゴリ', '食費', '日用品');
   fireEvent.click(screen.getByRole('button', { name: 'グラフ' }));
 
-  expect(screen.getByText(/絞り込み中（食費）/)).toBeInTheDocument();
+  expect(screen.getByText(/絞り込み中（食費・日用品）/)).toBeInTheDocument();
 });

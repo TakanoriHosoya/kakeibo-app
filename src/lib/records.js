@@ -12,8 +12,8 @@ export const COL = {
   DESCRIPTION: 6,
 };
 
-// フィルタの「絞り込まない」を表す値
-export const FILTER_ALL = 'すべて';
+// 絞り込みの初期値。各項目は選んだ値の配列で、空配列が「絞り込まない」を表す
+export const NO_FILTERS = { category: [], user: [], payment: [] };
 
 // 入力フォームの内容をスプレッドシート1行分の配列に組み立てる
 export function buildRecordRow({ date, category, paymentMethod, user, amount, description }, timestamp = new Date()) {
@@ -98,14 +98,25 @@ export function generateGraphData(records, categoryOptions) {
   return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// カテゴリ・利用者・支払方法の3条件で絞り込む
+// カテゴリ・利用者・支払方法の3条件で絞り込む。
+// 各条件は選んだ値のいずれかに一致すれば通り（OR）、条件どうしは両方満たす必要がある（AND）。
 export function applyFilters(records, { category, user, payment }) {
-  return records.filter(record => {
-    if (category !== FILTER_ALL && record.data[COL.CATEGORY] !== category) return false;
-    if (user !== FILTER_ALL && record.data[COL.USER] !== user) return false;
-    if (payment !== FILTER_ALL && record.data[COL.PAYMENT] !== payment) return false;
-    return true;
-  });
+  return records.filter(record => (
+    matchesAny(category, record.data[COL.CATEGORY]) &&
+    matchesAny(user, record.data[COL.USER]) &&
+    matchesAny(payment, record.data[COL.PAYMENT])
+  ));
+}
+
+// 何も選んでいなければ絞り込まない
+function matchesAny(selected, value) {
+  return selected.length === 0 || selected.includes(value);
+}
+
+// 選択肢の並び順を保ったまま、値の選択・解除を切り替える
+export function toggleFilterValue(selected, value, options) {
+  if (selected.includes(value)) return selected.filter(v => v !== value);
+  return options.filter(option => option === value || selected.includes(option));
 }
 
 // 金額の合計
@@ -115,5 +126,5 @@ export function sumAmount(records) {
 
 // 絞り込み中の条件の数（0 ならフィルタ未使用）
 export function countActiveFilters({ category, user, payment }) {
-  return [category, user, payment].filter(v => v !== FILTER_ALL).length;
+  return [category, user, payment].filter(selected => selected.length > 0).length;
 }
