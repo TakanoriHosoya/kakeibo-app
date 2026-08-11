@@ -8,6 +8,7 @@ import {
   applyFilters,
   sumAmount,
   countActiveFilters,
+  rowsMatch,
 } from './records';
 
 // テスト用のレコードを組み立てる（列の並びは COL に対応）
@@ -17,6 +18,30 @@ const rec = (rowNumber, date, category, payment, user, amount, description = '')
 });
 
 const CATEGORIES = ['食費', '日用品', '交通費'];
+
+describe('rowsMatch', () => {
+  const row = ['2026-08-01T00:00:00.000Z', '2026-08-05', '食費', '現金', 'ママ', '1200', 'スーパー'];
+
+  test('同じ内容なら true', () => {
+    expect(rowsMatch(row, [...row])).toBe(true);
+  });
+
+  test('1列でも違えば false', () => {
+    const changed = [...row];
+    changed[COL.AMOUNT] = '1300';
+    expect(rowsMatch(row, changed)).toBe(false);
+  });
+
+  test('末尾の空セルが省略されていても同じ内容とみなす', () => {
+    const withEmptyDescription = ['2026-08-01T00:00:00.000Z', '2026-08-05', '食費', '現金', 'ママ', '1200', ''];
+    const omitted = withEmptyDescription.slice(0, 6);
+    expect(rowsMatch(withEmptyDescription, omitted)).toBe(true);
+  });
+
+  test('行が消えて空になっていれば false', () => {
+    expect(rowsMatch(row, [])).toBe(false);
+  });
+});
 
 describe('buildRecordRow', () => {
   const input = {

@@ -11,8 +11,10 @@ import {
   applyFilters,
   sumAmount,
   countActiveFilters,
+  rowsMatch,
 } from './lib/records';
-import { loadGapi, initClient, fetchRecords, appendRecord, updateRecord, deleteRecord } from './lib/sheets';
+import { loadGapi, initClient, fetchRecords, fetchRow, appendRecord, updateRecord, deleteRecord } from './lib/sheets';
+import { saveToken, loadToken, clearToken } from './lib/auth';
 import EntryForm from './components/EntryForm';
 import SummaryTable from './components/SummaryTable';
 import GraphSection from './components/GraphSection';
@@ -45,8 +47,14 @@ function App() {
   // --- 表示用の派生データ ---
   const monthRecords = useMemo(() => filterRecordsByMonth(allRecords, viewingDate), [allRecords, viewingDate]);
   const summaries = useMemo(() => summarizeRecords(monthRecords), [monthRecords]);
-  const graphData = useMemo(() => generateGraphData(allRecords, CATEGORY_OPTIONS), [allRecords]);
   const filteredRecords = useMemo(() => applyFilters(monthRecords, filters), [monthRecords, filters]);
+
+  // グラフは月をまたぐ推移を見るものなので、月ナビとは連動させず絞り込み条件だけを反映する
+  const graphData = useMemo(
+    () => generateGraphData(applyFilters(allRecords, filters), CATEGORY_OPTIONS),
+    [allRecords, filters]
+  );
+
   const filteredTotal = sumAmount(filteredRecords);
   const activeFilterCount = countActiveFilters(filters);
 
@@ -66,9 +74,17 @@ function App() {
 
   const handleLogout = () => {
     googleLogout();
-    localStorage.removeItem('googleAuthToken');
+    clearToken();
     setIsLoggedIn(false);
     setAllRecords([]);
+  };
+
+  // 期限切れのトークンで API を叩くと 401 が返るだけなので、その前に再ログインへ誘導する
+  const hasValidToken = () => {
+    if (loadToken()) return true;
+    alert('認証の有効期限が切れました。安全のため、再度ログインしてください。');
+    handleLogout();
+    return false;
   };
 
   const signIn = async (token) => {
@@ -79,7 +95,7 @@ function App() {
 
   const login = useGoogleLogin({
     onSuccess: (tokenResponse) => {
-      localStorage.setItem('googleAuthToken', JSON.stringify(tokenResponse));
+      saveToken(tokenResponse);
       signIn(tokenResponse);
     },
     onError: (error) => { console.log('Login Failed:', error); alert('ログインに失敗しました。'); },
@@ -94,7 +110,20 @@ function App() {
     } catch (err) { handleApiError(err); }
   };
 
+  // 対象行が画面に表示している内容のままかを確かめる。
+  // ずれていたら書き込まずに中断し、最新の状態を読み込み直す。
+  const isRowUnchanged = async (record) => {
+    const currentRow = await fetchRow(record.rowNumber);
+    if (rowsMatch(currentRow, record.data)) return true;
+
+    alert('他の端末やスプレッドシート側でこの行が変更されたため、操作を中止しました。\n最新の状態を読み込み直します。');
+    await reloadRecords();
+    return false;
+  };
+
   const handleAddRecord = async () => {
+    if (!hasValidToken()) return;
+
     try {
       await appendRecord(buildRecordRow(formValues));
       alert('保存しました！');
@@ -104,9 +133,15 @@ function App() {
   };
 
   // 更新できたかどうかを返す（RecordsTable が編集モードを抜ける判断に使う）
-  const handleUpdateRecord = async (rowNumber, values) => {
+  const handleUpdateRecord = async (record, values) => {
+    if (!hasValidToken()) return false;
+
     try {
-      await updateRecord(rowNumber, values);
+      // 中断時に true を返すのは、読み込み直した一覧に対して古い編集内容を
+      // 開いたままにしないため（RecordsTable は true で編集モードを閉じる）
+      if (!await isRowUnchanged(record)) return true;
+
+      await updateRecord(record.rowNumber, values);
       alert('更新しました。');
       await reloadRecords();
       return true;
@@ -117,10 +152,14 @@ function App() {
   };
 
   const handleDeleteRecord = async (record) => {
+    if (!hasValidToken()) return;
+
     const message = `【削除確認】\n日付: ${record.data[COL.DATE]}\n金額: ${record.data[COL.AMOUNT]}円\n\nこのデータを本当に削除しますか？`;
     if (!window.confirm(message)) return;
 
     try {
+      if (!await isRowUnchanged(record)) return;
+
       await deleteRecord(record.rowNumber);
       alert('削除しました。');
       await reloadRecords();
@@ -158,9 +197,9 @@ function App() {
     const restoreLogin = async () => {
       try {
         await loadGapi();
-        const storedToken = localStorage.getItem('googleAuthToken');
+        const storedToken = loadToken();
         if (storedToken) {
-          await signIn(JSON.parse(storedToken));
+          await signIn(storedToken);
         }
       } catch (error) {
         console.error('アプリの初期化に失敗しました:', error);
@@ -208,6 +247,7 @@ function App() {
             {page === 'Graph' && (
               <GraphSection
                 graphData={graphData}
+                filters={filters}
                 visibleCategories={visibleCategories}
                 onToggleCategory={toggleCategory}
               />

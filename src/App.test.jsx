@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 
@@ -24,6 +24,7 @@ const renderApp = () => render(
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.spyOn(window, 'alert').mockImplementation(() => {});
   window.gapi = { load: (_name, { callback }) => callback() };
 });
@@ -32,9 +33,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// 保存済みトークンがある状態を作る
-const signedIn = () => {
-  localStorage.setItem('googleAuthToken', JSON.stringify({ access_token: 'dummy-token' }));
+const HOUR_MS = 60 * 60 * 1000;
+
+// 削除時に呼ばれる API。行ズレ検知で中断されたら呼ばれないことを確かめる
+let batchUpdate;
+
+// 保存済みトークンがある状態を作る。
+// expiresAt で期限切れの状態を、rowOverride で「シート側の行が変わっている」状態を作れる。
+const signedIn = ({ expiresAt = Date.now() + HOUR_MS, rowOverride = null } = {}) => {
+  sessionStorage.setItem('googleAuthToken', JSON.stringify({ access_token: 'dummy-token', expiresAt }));
+  batchUpdate = vi.fn(async () => ({}));
+
   window.gapi = {
     load: (_name, { callback }) => callback(),
     client: {
@@ -42,7 +51,18 @@ const signedIn = () => {
       setToken: () => {},
       sheets: {
         spreadsheets: {
-          values: { get: async () => ({ result: { values: SHEET_VALUES } }) },
+          get: async () => ({ result: { sheets: [{ properties: { sheetId: 42, title: 'data' } }] } }),
+          batchUpdate,
+          values: {
+            get: async ({ range }) => {
+              // 単一行の取得（書き込み前の照合）と全件取得を range で見分ける
+              const singleRow = range.match(/!A(\d+):G\d+$/);
+              if (!singleRow) return { result: { values: SHEET_VALUES } };
+
+              const row = rowOverride || SHEET_VALUES[Number(singleRow[1]) - 1];
+              return { result: { values: [row] } };
+            },
+          },
         },
       },
     },
@@ -113,4 +133,59 @@ test('月を戻すと当月の記録が消える', async () => {
 
   expect(screen.queryByText('スーパー')).not.toBeInTheDocument();
   expect(screen.getByText('この月の記録はありません')).toBeInTheDocument();
+});
+
+test('期限切れのトークンではログインを復元しない', async () => {
+  signedIn({ expiresAt: Date.now() - 1000 });
+  renderApp();
+
+  expect(
+    await screen.findByRole('button', { name: 'Googleアカウントでログイン' })
+  ).toBeInTheDocument();
+  expect(sessionStorage.getItem('googleAuthToken')).toBeNull();
+});
+
+test('localStorage に残った古いトークンではログインを復元しない', async () => {
+  // sessionStorage へ移す前のバージョンが保存したトークンを想定
+  localStorage.setItem('googleAuthToken', JSON.stringify({ access_token: 'old-token' }));
+  renderApp();
+
+  expect(
+    await screen.findByRole('button', { name: 'Googleアカウントでログイン' })
+  ).toBeInTheDocument();
+});
+
+test('シート側で行が変わっていたら削除せずに中断する', async () => {
+  // 表示中の行が、シート上では別の記録に置き換わっている状態
+  signedIn({ rowOverride: ['2026-01-01T00:00:00.000Z', day(5), '家賃', '現金', 'パパ', '90000', '別の記録'] });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderApp();
+  await screen.findByText('スーパー');
+
+  fireEvent.click(screen.getAllByRole('button', { name: '🗑️' })[0]);
+
+  await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('操作を中止しました')));
+  expect(batchUpdate).not.toHaveBeenCalled();
+});
+
+test('行が変わっていなければ削除が実行される', async () => {
+  signedIn();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  renderApp();
+  await screen.findByText('スーパー');
+
+  fireEvent.click(screen.getAllByRole('button', { name: '🗑️' })[0]);
+
+  await waitFor(() => expect(batchUpdate).toHaveBeenCalled());
+});
+
+test('絞り込み中はグラフにその条件が反映されていることを示す', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  fireEvent.change(screen.getByDisplayValue('カテゴリ：すべて'), { target: { value: '食費' } });
+  fireEvent.click(screen.getByRole('button', { name: 'グラフ' }));
+
+  expect(screen.getByText(/絞り込み中（食費）/)).toBeInTheDocument();
 });

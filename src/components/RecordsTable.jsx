@@ -30,7 +30,7 @@ function RecordsTable({ records, hasActiveFilters, onSave, onDelete }) {
   };
 
   const save = async () => {
-    const saved = await onSave(editingRow.rowNumber, editedRecord);
+    const saved = await onSave(editingRow, editedRecord);
     if (saved) cancelEdit();
   };
 

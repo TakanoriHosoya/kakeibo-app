@@ -28,6 +28,14 @@ export function buildRecordRow({ date, category, paymentMethod, user, amount, de
   return row;
 }
 
+// 2つの行が同じ内容か。編集・削除は行番号を頼りに書き込むため、
+// 他端末やスプレッドシート直編集で行がずれていないかをこれで照合する。
+// 末尾の空セルは省略されて返ることがあるので、長さではなく列ごとに比べる。
+export function rowsMatch(a, b) {
+  const cell = (row, index) => String(row?.[index] ?? '').trim();
+  return Object.values(COL).every(index => cell(a, index) === cell(b, index));
+}
+
 // 指定した年月の記録だけを、日付の新しい順に返す
 export function filterRecordsByMonth(records, viewingDate) {
   const targetYear = viewingDate.getFullYear();

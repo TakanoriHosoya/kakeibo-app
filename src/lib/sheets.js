@@ -35,6 +35,15 @@ export async function fetchRecords() {
   }));
 }
 
+// 指定した1行の現在の内容を返す（書き込み前の照合用）。空行なら空配列
+export async function fetchRow(rowNumber) {
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${rowNumber}:G${rowNumber}`,
+  });
+  return (response.result.values || [])[0] || [];
+}
+
 // 末尾に1行追加する
 export async function appendRecord(values) {
   await window.gapi.client.sheets.spreadsheets.values.append({
