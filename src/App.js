@@ -1,12 +1,13 @@
 // src/App.js (全ての機能を統合した最終・完全版)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './App.css';
 
 // --- 定数設定 ---
 const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
+const SHEET_NAME = 'data';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '家賃', '水道・光熱費', '通信費', '保険', '習い事', '税金・社会保険', 'その他'];
 const PAYMENT_METHOD_OPTIONS = ['楽天Pay', '現金', '楽天カード', 'PayPay', 'Amazonカード', 'セゾンカード', '京王パスポート', 'その他'];
@@ -43,6 +44,9 @@ function App() {
   const [graphData, setGraphData] = useState([]);
   const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS));
 
+  // 'data' シートの内部 ID。シート名から引いて保持する（0 も有効な値なので null で未取得を表す）
+  const dataSheetIdRef = useRef(null);
+
 
   // --- 関数定義 ---
 
@@ -51,6 +55,8 @@ function App() {
     if (err.status === 401) {
       alert('認証の有効期限が切れました。安全のため、再度ログインしてください。');
       handleLogout();
+    } else if (err instanceof Error) {
+      alert(`処理中にエラーが発生しました。\n${err.message}`);
     } else {
       alert('処理中にエラーが発生しました。詳細はコンソールを確認してください。');
     }
@@ -82,10 +88,22 @@ function App() {
     scope: SCOPES,
   });
 
+  // シート名から実際の sheetId を取得する（初回のみ問い合わせ、以降はキャッシュ）
+  const getDataSheetId = async () => {
+    if (dataSheetIdRef.current !== null) return dataSheetIdRef.current;
+    const response = await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID, fields: 'sheets.properties(sheetId,title)',
+    });
+    const dataSheet = (response.result.sheets || []).find(s => s.properties.title === SHEET_NAME);
+    if (!dataSheet) throw new Error(`シート「${SHEET_NAME}」が見つかりませんでした。`);
+    dataSheetIdRef.current = dataSheet.properties.sheetId;
+    return dataSheetIdRef.current;
+  };
+
   const loadRecords = async () => {
     try {
       const response = await window.gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: 'data!A:G',
+        spreadsheetId: SPREADSHEET_ID, range: `${SHEET_NAME}!A:G`,
       });
       const headerRows = 1;
       const loadedRecords = (response.result.values || []).slice(headerRows).map((row, index) => ({
@@ -101,7 +119,7 @@ function App() {
     const newRecord = [ new Date().toISOString(), date, category, paymentMethod, user, amount, description ];
     try {
       await window.gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID, range: 'data!A1', valueInputOption: 'USER_ENTERED', resource: { values: [newRecord] },
+        spreadsheetId: SPREADSHEET_ID, range: `${SHEET_NAME}!A1`, valueInputOption: 'USER_ENTERED', resource: { values: [newRecord] },
       });
       alert('保存しました！');
       setAmount(''); setDescription('');
@@ -112,8 +130,9 @@ function App() {
   const handleDelete = async (recordToDelete) => {
     if (!window.confirm(`【削除確認】\n日付: ${recordToDelete.data[1]}\n金額: ${recordToDelete.data[5]}円\n\nこのデータを本当に削除しますか？`)) return;
     try {
+      const sheetId = await getDataSheetId();
       await window.gapi.client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: SPREADSHEET_ID, resource: { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: recordToDelete.rowNumber - 1, endIndex: recordToDelete.rowNumber }}}] },
+        spreadsheetId: SPREADSHEET_ID, resource: { requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: recordToDelete.rowNumber - 1, endIndex: recordToDelete.rowNumber }}}] },
       });
       alert('削除しました。');
       await loadRecords();
@@ -123,7 +142,7 @@ function App() {
   const handleSave = async () => {
     try {
       await window.gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID, range: `data!A${editingRow.rowNumber}:G${editingRow.rowNumber}`, valueInputOption: 'USER_ENTERED', resource: { values: [editedRecord] },
+        spreadsheetId: SPREADSHEET_ID, range: `${SHEET_NAME}!A${editingRow.rowNumber}:G${editingRow.rowNumber}`, valueInputOption: 'USER_ENTERED', resource: { values: [editedRecord] },
       });
       alert('更新しました。');
       setEditingRow(null); setEditedRecord(null);
