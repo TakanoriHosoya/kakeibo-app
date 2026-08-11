@@ -1,6 +1,9 @@
 // --- Google スプレッドシート ---
-export const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
-export const SHEET_NAME = 'data';
+// .env.local で上書きできる（別のシートで試したいとき用）。未設定なら本番のシートを見る。
+// なお値はビルド成果物に埋め込まれるので、環境変数にしても秘匿はされない。
+// アクセス制御を担っているのはスプレッドシート側の共有設定であって、この ID の秘匿性ではない。
+export const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID || '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
+export const SHEET_NAME = import.meta.env.VITE_SHEET_NAME || 'data';
 export const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
 // --- 入力の選択肢 ---
