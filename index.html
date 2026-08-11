@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+
+    <!-- ▼▼▼ ★★★この一行がスマートフォン表示を正しく機能させるために不可欠です★★★ ▼▼▼ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- ▲▲▲ ★★★この一行がスマートフォン表示を正しく機能させるために不可欠です★★★ ▲▲▲ -->
+
+    <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="ReactとGoogleスプレッドシートで作る家計簿アプリ"
+    />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>家計簿アプリ</title>
+  </head>
+  <body>
+    <noscript>このアプリを実行するにはJavaScriptを有効にする必要があります。</noscript>
+    <div id="root"></div>
+
+    <!-- ▼▼▼ ★★★Google API Client Libraryを読み込むためのスクリプト★★★ ▼▼▼ -->
+    <!-- アプリ本体は type="module"（defer 相当）なので、同期読み込みのこのスクリプトが必ず先に実行される。
+         App が window.gapi を参照できるのはそのため。async / defer を足さないこと -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- ▲▲▲ ★★★このスクリプトはアプリが動作するために不可欠です★★★ ▲▲▲ -->
+
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html>

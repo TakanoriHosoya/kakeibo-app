@@ -9,7 +9,10 @@
 /coverage
 
 # production
-/build
+/dist
+
+# 作業計画メモ。未修正の脆弱性の内容を含むため、public リポジトリには入れない
+/UPDATE_PLAN.md
 
 # misc
 .DS_Store
