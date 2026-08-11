@@ -2,20 +2,23 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
 
-    <!-- ▼▼▼ ★★★この一行がスマートフォン表示を正しく機能させるために不可欠です★★★ ▼▼▼ -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- ▲▲▲ ★★★この一行がスマートフォン表示を正しく機能させるために不可欠です★★★ ▲▲▲ -->
+    <!-- スマホ表示に必須。viewport-fit=cover はノッチ周りの余白（env(safe-area-inset-*)）を
+         CSS から使えるようにするために要る -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <meta name="theme-color" content="#ffffff" />
-    <meta
-      name="description"
-      content="ReactとGoogleスプレッドシートで作る家計簿アプリ"
-    />
-    <link rel="apple-touch-icon" href="/logo192.png" />
+    <meta name="theme-color" content="#1a73e8" />
+    <meta name="description" content="Googleスプレッドシートに記録する家計簿" />
+
+    <!-- ホーム画面に追加したときアドレスバー無しの単体アプリとして起動させる（iOS 用） -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="家計簿" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <link rel="manifest" href="/manifest.json" />
-    <title>家計簿アプリ</title>
+    <title>細矢さん 家計簿</title>
   </head>
   <body>
     <noscript>このアプリを実行するにはJavaScriptを有効にする必要があります。</noscript>
