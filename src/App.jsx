@@ -1,17 +1,24 @@
-// src/App.js (全ての機能を統合した最終・完全版)
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  SPREADSHEET_ID,
+  SHEET_NAME,
+  SCOPES,
+  CATEGORY_OPTIONS,
+  PAYMENT_METHOD_OPTIONS,
+  USER_OPTIONS,
+} from './constants';
+import {
+  FILTER_ALL,
+  filterRecordsByMonth,
+  summarizeRecords,
+  generateGraphData,
+  applyFilters,
+  sumAmount,
+  countActiveFilters,
+} from './lib/records';
 import './App.css';
-
-// --- 定数設定 ---
-const SPREADSHEET_ID = '1ELmgy9DzOWgwMFYgxN567yLQPpM9-NFOFq6N4pRDJeA';
-const SHEET_NAME = 'data';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-const CATEGORY_OPTIONS = ['食費', '日用品', '交通費', '趣味・娯楽', '交際費', '衣服・美容', '健康・医療', '住居・家具', '家賃', '水道・光熱費', '通信費', '保険', '習い事', '税金・社会保険', 'その他'];
-const PAYMENT_METHOD_OPTIONS = ['楽天Pay', '現金', '楽天カード', 'PayPay', 'Amazonカード', 'セゾンカード', '京王パスポート', 'その他'];
-const USER_OPTIONS = ['ママ', 'パパ', '家族'];
 
 function App() {
   // --- State管理 ---
@@ -34,9 +41,9 @@ function App() {
   const [page, setPage] = useState('Home');
 
   // ★ フィルター state（3種類）
-  const [filterCategory, setFilterCategory] = useState('すべて');
-  const [filterUser, setFilterUser] = useState('すべて');
-  const [filterPayment, setFilterPayment] = useState('すべて');
+  const [filterCategory, setFilterCategory] = useState(FILTER_ALL);
+  const [filterUser, setFilterUser] = useState(FILTER_ALL);
+  const [filterPayment, setFilterPayment] = useState(FILTER_ALL);
 
   const [summary, setSummary] = useState({});
   const [userSummary, setUserSummary] = useState({});
@@ -164,35 +171,15 @@ function App() {
 
   // フィルターをすべてリセット
   const resetFilters = () => {
-    setFilterCategory('すべて');
-    setFilterUser('すべて');
-    setFilterPayment('すべて');
+    setFilterCategory(FILTER_ALL);
+    setFilterUser(FILTER_ALL);
+    setFilterPayment(FILTER_ALL);
   };
 
   // アクティブなフィルター数（リセットリンクの表示判定用）
-  const activeFilterCount = [filterCategory, filterUser, filterPayment].filter(v => v !== 'すべて').length;
-
-  // グラフデータ生成関数
-  const generateGraphData = (records) => {
-    const monthlyData = {};
-    records.forEach(record => {
-      if (!record || !record.data[1]) return;
-      const recordDate = new Date(record.data[1]);
-      if (isNaN(recordDate.getTime())) return;
-      const yearMonth = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}`;
-      const cat = record.data[2];
-      const amt = Number(record.data[5] || 0);
-      if (!monthlyData[yearMonth]) {
-        monthlyData[yearMonth] = { date: yearMonth, total: 0 };
-        CATEGORY_OPTIONS.forEach(c => { monthlyData[yearMonth][c] = 0; });
-      }
-      monthlyData[yearMonth].total += amt;
-      if (monthlyData[yearMonth][cat] !== undefined) {
-        monthlyData[yearMonth][cat] += amt;
-      }
-    });
-    return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
-  };
+  const activeFilterCount = countActiveFilters({
+    category: filterCategory, user: filterUser, payment: filterPayment,
+  });
 
   const toggleCategory = (cat) => {
     const next = new Set(visibleCategories);
@@ -221,46 +208,23 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    const targetYear = viewingDate.getFullYear();
-    const targetMonth = viewingDate.getMonth();
-    
-    const filteredRecords = allRecords.filter(record => {
-      if (!record || !record.data[1]) return false;
-      const recordDate = new Date(record.data[1]);
-      if (isNaN(recordDate.getTime())) return false;
-      return recordDate.getFullYear() === targetYear && recordDate.getMonth() === targetMonth;
-    });
 
-    filteredRecords.sort((a, b) => new Date(b.data[1]) - new Date(a.data[1]));
-    setRecords(filteredRecords);
+    const monthRecords = filterRecordsByMonth(allRecords, viewingDate);
+    setRecords(monthRecords);
 
-    const categoryTotals = {};
-    const userTotals = {};
-    const categoryUserTotals = {};
-    filteredRecords.forEach(record => {
-      const cat = record.data[2];
-      const usr = record.data[4];
-      const amt = Number(record.data[5] || 0);
-      categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
-      userTotals[usr] = (userTotals[usr] || 0) + amt;
-      if (!categoryUserTotals[cat]) categoryUserTotals[cat] = {};
-      categoryUserTotals[cat][usr] = (categoryUserTotals[cat][usr] || 0) + amt;
-    });
+    const { categoryTotals, userTotals, categoryUserTotals } = summarizeRecords(monthRecords);
     setSummary(categoryTotals);
     setUserSummary(userTotals);
     setCategoryUserSummary(categoryUserTotals);
-    setGraphData(generateGraphData(allRecords));
+    setGraphData(generateGraphData(allRecords, CATEGORY_OPTIONS));
   }, [allRecords, viewingDate, isLoggedIn]);
 
   // ★ 3つのフィルターを組み合わせて絞り込み
-  const filteredRecords = records.filter(record => {
-    if (filterCategory !== 'すべて' && record.data[2] !== filterCategory) return false;
-    if (filterUser !== 'すべて' && record.data[4] !== filterUser) return false;
-    if (filterPayment !== 'すべて' && record.data[3] !== filterPayment) return false;
-    return true;
+  const filteredRecords = applyFilters(records, {
+    category: filterCategory, user: filterUser, payment: filterPayment,
   });
 
-  const filteredTotal = filteredRecords.reduce((sum, r) => sum + Number(r.data[5] || 0), 0);
+  const filteredTotal = sumAmount(filteredRecords);
 
   // --- JSX (画面描画) ---
   return (
@@ -404,11 +368,11 @@ function App() {
                 <div className="filter-selects">
                   <div className="filter-select-wrap">
                     <select
-                      className={`filter-select ${filterCategory !== 'すべて' ? 'filter-select--active' : ''}`}
+                      className={`filter-select ${filterCategory !== FILTER_ALL ? 'filter-select--active' : ''}`}
                       value={filterCategory}
                       onChange={e => setFilterCategory(e.target.value)}
                     >
-                      <option value="すべて">カテゴリ：すべて</option>
+                      <option value={FILTER_ALL}>カテゴリ：すべて</option>
                       {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                     <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
@@ -418,11 +382,11 @@ function App() {
 
                   <div className="filter-select-wrap">
                     <select
-                      className={`filter-select ${filterUser !== 'すべて' ? 'filter-select--active' : ''}`}
+                      className={`filter-select ${filterUser !== FILTER_ALL ? 'filter-select--active' : ''}`}
                       value={filterUser}
                       onChange={e => setFilterUser(e.target.value)}
                     >
-                      <option value="すべて">利用者：すべて</option>
+                      <option value={FILTER_ALL}>利用者：すべて</option>
                       {USER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                     <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
@@ -432,11 +396,11 @@ function App() {
 
                   <div className="filter-select-wrap">
                     <select
-                      className={`filter-select ${filterPayment !== 'すべて' ? 'filter-select--active' : ''}`}
+                      className={`filter-select ${filterPayment !== FILTER_ALL ? 'filter-select--active' : ''}`}
                       value={filterPayment}
                       onChange={e => setFilterPayment(e.target.value)}
                     >
-                      <option value="すべて">支払方法：すべて</option>
+                      <option value={FILTER_ALL}>支払方法：すべて</option>
                       {PAYMENT_METHOD_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                     <svg className="filter-select-arrow" width="10" height="10" viewBox="0 0 10 10">
@@ -449,22 +413,22 @@ function App() {
                 {activeFilterCount > 0 && (
                   <div className="filter-status">
                     <div className="filter-tags">
-                      {filterCategory !== 'すべて' && (
+                      {filterCategory !== FILTER_ALL && (
                         <span className="filter-tag">
                           {filterCategory}
-                          <button className="filter-tag-remove" onClick={() => setFilterCategory('すべて')}>×</button>
+                          <button className="filter-tag-remove" onClick={() => setFilterCategory(FILTER_ALL)}>×</button>
                         </span>
                       )}
-                      {filterUser !== 'すべて' && (
+                      {filterUser !== FILTER_ALL && (
                         <span className="filter-tag">
                           {filterUser}
-                          <button className="filter-tag-remove" onClick={() => setFilterUser('すべて')}>×</button>
+                          <button className="filter-tag-remove" onClick={() => setFilterUser(FILTER_ALL)}>×</button>
                         </span>
                       )}
-                      {filterPayment !== 'すべて' && (
+                      {filterPayment !== FILTER_ALL && (
                         <span className="filter-tag">
                           {filterPayment}
-                          <button className="filter-tag-remove" onClick={() => setFilterPayment('すべて')}>×</button>
+                          <button className="filter-tag-remove" onClick={() => setFilterPayment(FILTER_ALL)}>×</button>
                         </span>
                       )}
                     </div>
