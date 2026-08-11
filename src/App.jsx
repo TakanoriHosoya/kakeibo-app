@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import { CATEGORY_OPTIONS, PAYMENT_METHOD_OPTIONS, USER_OPTIONS, SCOPES } from './constants';
 import {
@@ -21,6 +21,8 @@ import GraphSection from './components/GraphSection';
 import MonthNavigator from './components/MonthNavigator';
 import FilterPanel from './components/FilterPanel';
 import RecordsTable from './components/RecordsTable';
+import Toast from './components/Toast';
+import ConfirmDialog from './components/ConfirmDialog';
 import './App.css';
 
 const NO_FILTERS = { category: FILTER_ALL, user: FILTER_ALL, payment: FILTER_ALL };
@@ -43,6 +45,16 @@ function App() {
   const [filters, setFilters] = useState(NO_FILTERS);
   const [formValues, setFormValues] = useState(emptyForm);
   const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS));
+  const [toast, setToast] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // --- 画面内の通知 ---
+  // id を付けて毎回別オブジェクトにする（同じ文言が続いても表示し直すため）。
+  // Toast 側のタイマーが張り直されないよう、関数の同一性は保つ。
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ id: Date.now(), message, type });
+  }, []);
+  const hideToast = useCallback(() => setToast(null), []);
 
   // --- 表示用の派生データ ---
   const monthRecords = useMemo(() => filterRecordsByMonth(allRecords, viewingDate), [allRecords, viewingDate]);
@@ -63,12 +75,12 @@ function App() {
   const handleApiError = (err) => {
     console.error('API Error:', err);
     if (err.status === 401) {
-      alert('認証の有効期限が切れました。安全のため、再度ログインしてください。');
+      showToast('認証の有効期限が切れました。再度ログインしてください。', 'error');
       handleLogout();
     } else if (err instanceof Error) {
-      alert(`処理中にエラーが発生しました。\n${err.message}`);
+      showToast(`処理中にエラーが発生しました。${err.message}`, 'error');
     } else {
-      alert('処理中にエラーが発生しました。詳細はコンソールを確認してください。');
+      showToast('処理中にエラーが発生しました。詳細はコンソールを確認してください。', 'error');
     }
   };
 
@@ -82,7 +94,7 @@ function App() {
   // 期限切れのトークンで API を叩くと 401 が返るだけなので、その前に再ログインへ誘導する
   const hasValidToken = () => {
     if (loadToken()) return true;
-    alert('認証の有効期限が切れました。安全のため、再度ログインしてください。');
+    showToast('認証の有効期限が切れました。再度ログインしてください。', 'error');
     handleLogout();
     return false;
   };
@@ -98,7 +110,7 @@ function App() {
       saveToken(tokenResponse);
       signIn(tokenResponse);
     },
-    onError: (error) => { console.log('Login Failed:', error); alert('ログインに失敗しました。'); },
+    onError: (error) => { console.error('Login Failed:', error); showToast('ログインに失敗しました。', 'error'); },
     scope: SCOPES,
   });
 
@@ -116,7 +128,7 @@ function App() {
     const currentRow = await fetchRow(record.rowNumber);
     if (rowsMatch(currentRow, record.data)) return true;
 
-    alert('他の端末やスプレッドシート側でこの行が変更されたため、操作を中止しました。\n最新の状態を読み込み直します。');
+    showToast('他の端末で変更されたため操作を中止しました。最新の状態に更新します。', 'error');
     await reloadRecords();
     return false;
   };
@@ -126,7 +138,7 @@ function App() {
 
     try {
       await appendRecord(buildRecordRow(formValues));
-      alert('保存しました！');
+      showToast('保存しました');
       setFormValues(prev => ({ ...prev, amount: '', description: '' }));
       await reloadRecords();
     } catch (err) { handleApiError(err); }
@@ -142,7 +154,7 @@ function App() {
       if (!await isRowUnchanged(record)) return true;
 
       await updateRecord(record.rowNumber, values);
-      alert('更新しました。');
+      showToast('更新しました');
       await reloadRecords();
       return true;
     } catch (error) {
@@ -151,17 +163,19 @@ function App() {
     }
   };
 
-  const handleDeleteRecord = async (record) => {
-    if (!hasValidToken()) return;
+  // 削除は確認ダイアログを挟む。実際の削除は confirmDelete の側で行う
+  const handleDeleteRecord = (record) => setDeleteTarget(record);
 
-    const message = `【削除確認】\n日付: ${record.data[COL.DATE]}\n金額: ${record.data[COL.AMOUNT]}円\n\nこのデータを本当に削除しますか？`;
-    if (!window.confirm(message)) return;
+  const confirmDelete = async () => {
+    const record = deleteTarget;
+    setDeleteTarget(null);
+    if (!record || !hasValidToken()) return;
 
     try {
       if (!await isRowUnchanged(record)) return;
 
       await deleteRecord(record.rowNumber);
-      alert('削除しました。');
+      showToast('削除しました');
       await reloadRecords();
     } catch (error) { handleApiError(error); }
   };
@@ -233,7 +247,12 @@ function App() {
 
           <main>
             {page === 'Home' && (
-              <EntryForm values={formValues} onChange={changeFormValue} onSubmit={handleAddRecord} />
+              <EntryForm
+                values={formValues}
+                onChange={changeFormValue}
+                onSubmit={handleAddRecord}
+                onNotify={showToast}
+              />
             )}
 
             {page === 'History' && (
@@ -277,6 +296,17 @@ function App() {
           </main>
         </>
       )}
+
+      <Toast toast={toast} onClose={hideToast} />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="この記録を削除しますか？"
+        description={deleteTarget && `${new Date(deleteTarget.data[COL.DATE]).toLocaleDateString('ja-JP')}　${deleteTarget.data[COL.CATEGORY]}　${Number(deleteTarget.data[COL.AMOUNT] || 0).toLocaleString()}円`}
+        confirmLabel="削除する"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

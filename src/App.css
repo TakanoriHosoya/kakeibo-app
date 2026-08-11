@@ -139,8 +139,11 @@ th {
   color: #5f6368;
 }
 
-tbody tr:hover {
-  background-color: #f1f8ff;
+/* マウスのある環境だけ。スマホだとタップ後に hover が残り続けて見づらい */
+@media (hover: hover) {
+  tbody tr:hover {
+    background-color: #f1f8ff;
+  }
 }
 
 .main-nav {
@@ -210,8 +213,10 @@ tbody tr:hover {
   transition: background-color 0.2s;
 }
 
-.action-button:hover {
-  background-color: rgba(0,0,0,0.05);
+@media (hover: hover) {
+  .action-button:hover {
+    background-color: rgba(0,0,0,0.05);
+  }
 }
 
 .edit-button, .save-button { color: #1a73e8; }
@@ -292,8 +297,10 @@ tbody tr:hover {
   text-overflow: ellipsis;
 }
 
-.filter-select:hover {
-  border-color: #1a73e8;
+@media (hover: hover) {
+  .filter-select:hover {
+    border-color: #1a73e8;
+  }
 }
 
 .filter-select:focus {
@@ -390,13 +397,17 @@ tbody tr:hover {
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
   }
-  .container { padding: 0 16px; }
+  /* 左右はノッチ・丸角を避け、下はホームバーぶんの余白を足す */
+  .container {
+    padding: 0 max(16px, env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right));
+  }
 
   header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 0;
+    gap: 12px;
+    padding: calc(16px + env(safe-area-inset-top)) 0 16px;
   }
   header h1 { font-size: 1.5rem; }
   .logout-button {
@@ -450,8 +461,9 @@ tbody tr:hover {
     margin: 0 8px;
   }
   .month-navigator button {
-    font-size: 0.9rem;
-    padding: 8px 12px;
+    font-size: 0.95rem;
+    padding: 12px 14px;
+    min-height: 44px;
     flex-shrink: 0;
   }
 
@@ -462,42 +474,64 @@ tbody tr:hover {
   .filter-selects {
     gap: 6px;
   }
+  /* 16px にすると2列では「カテゴリ：…」と省略されてしまうので、1行に1つずつ置く */
   .filter-select-wrap {
     min-width: 0;
-    flex: 1 1 calc(50% - 6px);
+    flex: 1 1 100%;
   }
+  /* iOS Safari は 16px 未満の入力欄にフォーカスすると画面を勝手に拡大するので、
+     見た目は transform で小さくし、実サイズは 16px のままにする */
   .filter-select {
-    font-size: 12px;
-    padding: 7px 24px 7px 12px;
+    font-size: 16px;
+    padding: 9px 28px 9px 14px;
   }
   .filter-result-summary {
-    font-size: 12px;
+    font-size: 13px;
+  }
+  /* タップ領域を確保する（× が小さすぎて押しづらいため） */
+  .filter-tag-remove {
+    padding: 6px 4px 6px 6px;
+    font-size: 15px;
+  }
+  .filter-reset-btn {
+    padding: 8px 6px;
   }
 
-  th, td {
-    padding: 14px 10px;
-    font-size: 1rem;
-    vertical-align: middle;
+  /* 集計表は5列あるので、画面内に収まるところまで詰める。
+     それでも溢れた場合に備えて横スクロールを許し、カテゴリ列は左に固定する */
+  .summary-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .summary-table table {
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-table th, .summary-table td {
+    padding: 10px 5px;
+    font-size: 0.78rem;
     white-space: nowrap;
+    vertical-align: middle;
+    text-align: right;
   }
-
-  th:nth-child(6),
-  td:nth-child(6) {
-      white-space: normal;
-      min-width: 150px;
-      word-break: break-all;
-  }
-
-  th:nth-child(2),
-  td:nth-child(2) {
+  /* カテゴリ名だけは左寄せ。長い名前は折り返して幅を抑える */
+  .summary-table th:first-child,
+  .summary-table td:first-child {
+    text-align: left;
     white-space: normal;
-    min-width: 90px;
+    word-break: break-word;
   }
-
-  th:nth-child(3),
-  td:nth-child(3) {
-      white-space: normal;
-      min-width: 70px;
+  .summary-table th:first-child,
+  .summary-table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    box-shadow: 1px 0 0 #e0e0e0;
+  }
+  .summary-table th:first-child {
+    background-color: #f8f9fa;
+  }
+  .summary-table .summary-total td:first-child {
+    background-color: #f8f9fa;
   }
 
   th {
@@ -522,6 +556,250 @@ tbody tr:hover {
     font-size: 1rem;
     padding: 12px 14px;
   }
+}
+
+/* =================================== */
+/* 履歴のカード表示（スマホ） */
+/* =================================== */
+.record-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.record-card {
+  border: 1px solid #e8eaed;
+  border-radius: 12px;
+  padding: 14px;
+  background-color: white;
+}
+
+.record-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.record-card-date {
+  font-size: 0.95rem;
+  color: #5f6368;
+}
+
+.record-card-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #202124;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.record-card-category {
+  background-color: #e8f0fe;
+  color: #1967d2;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.record-card-sub {
+  font-size: 0.85rem;
+  color: #5f6368;
+}
+
+/* 利用者と支払方法のあいだに区切りを入れる */
+.record-card-sub + .record-card-sub::before {
+  content: '·';
+  margin-right: 8px;
+  color: #bdc1c6;
+}
+
+.record-card-description {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: #3c4043;
+  word-break: break-word;
+}
+
+.record-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* 編集中のカードは入力欄を縦に並べる */
+.record-card--editing {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 1px #1a73e8;
+}
+
+.record-card-field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.record-card-field-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  color: #5f6368;
+}
+
+.record-card-field input,
+.record-card-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  /* 16px 未満だと iOS が勝手に拡大する */
+  font-size: 16px;
+  background-color: white;
+}
+
+/* =================================== */
+/* トースト通知 */
+/* =================================== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: min(92vw, 480px);
+  padding: 14px 16px;
+  border-radius: 10px;
+  background-color: #202124;
+  color: white;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast--error {
+  background-color: #b3261e;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 4px 4px 4px 8px;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* =================================== */
+/* 確認ダイアログ */
+/* =================================== */
+body.dialog-open {
+  overflow: hidden;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(32,33,36,0.5);
+  animation: dialog-fade 0.15s ease-out;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  border-radius: 14px;
+  background-color: white;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #202124;
+}
+
+.dialog-description {
+  margin: 0 0 20px;
+  color: #5f6368;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* 開いた直後にキャンセルへフォーカスが当たる。既定の黒い枠は目立ちすぎるので置き換える */
+.dialog-button:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.dialog-button--cancel {
+  border: 1px solid #dadce0;
+  background-color: white;
+  color: #3c4043;
+}
+
+.dialog-button--confirm {
+  border: none;
+  background-color: #d93025;
+  color: white;
+}
+
+@keyframes dialog-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* =================================== */

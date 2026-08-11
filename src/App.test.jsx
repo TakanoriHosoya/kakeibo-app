@@ -25,12 +25,12 @@ const renderApp = () => render(
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  vi.spyOn(window, 'alert').mockImplementation(() => {});
   window.gapi = { load: (_name, { callback }) => callback() };
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -155,28 +155,70 @@ test('localStorage に残った古いトークンではログインを復元し�
   ).toBeInTheDocument();
 });
 
+// 削除ボタンを押し、確認ダイアログの「削除する」まで進める
+const requestDelete = async () => {
+  fireEvent.click(screen.getAllByRole('button', { name: '削除' })[0]);
+  fireEvent.click(await screen.findByRole('button', { name: '削除する' }));
+};
+
 test('シート側で行が変わっていたら削除せずに中断する', async () => {
   // 表示中の行が、シート上では別の記録に置き換わっている状態
   signedIn({ rowOverride: ['2026-01-01T00:00:00.000Z', day(5), '家賃', '現金', 'パパ', '90000', '別の記録'] });
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   renderApp();
   await screen.findByText('スーパー');
 
-  fireEvent.click(screen.getAllByRole('button', { name: '🗑️' })[0]);
+  await requestDelete();
 
-  await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('操作を中止しました')));
+  expect(await screen.findByText(/操作を中止しました/)).toBeInTheDocument();
   expect(batchUpdate).not.toHaveBeenCalled();
 });
 
 test('行が変わっていなければ削除が実行される', async () => {
   signedIn();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   renderApp();
   await screen.findByText('スーパー');
 
-  fireEvent.click(screen.getAllByRole('button', { name: '🗑️' })[0]);
+  await requestDelete();
 
   await waitFor(() => expect(batchUpdate).toHaveBeenCalled());
+  expect(await screen.findByText('削除しました')).toBeInTheDocument();
+});
+
+test('確認ダイアログでキャンセルすると削除されない', async () => {
+  signedIn();
+  renderApp();
+  await screen.findByText('スーパー');
+
+  fireEvent.click(screen.getAllByRole('button', { name: '削除' })[0]);
+  fireEvent.click(await screen.findByRole('button', { name: 'キャンセル' }));
+
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(batchUpdate).not.toHaveBeenCalled();
+});
+
+test('スマホ幅では履歴を表ではなくカードで並べる', async () => {
+  // 768px 以下にいることにする（jsdom は matchMedia を持たないので生やす）
+  vi.stubGlobal('matchMedia', query => ({
+    matches: query.includes('max-width: 768px'),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  signedIn();
+  renderApp();
+
+  await screen.findByText('スーパー');
+
+  // 横スクロールの原因だった表が無く、当月の2件がカードとして並んでいる
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+  // 並びは表と同じく日付の新しい順
+  const cards = document.querySelectorAll('.record-card');
+  expect(cards).toHaveLength(2);
+  expect(cards[0].querySelector('.record-card-category').textContent).toBe('日用品');
+  expect(cards[0].querySelector('.record-card-amount').textContent).toBe('800 円');
+  expect(cards[1].querySelector('.record-card-category').textContent).toBe('食費');
+  expect(cards[1].querySelector('.record-card-amount').textContent).toBe('1,200 円');
 });
 
 test('絞り込み中はグラフにその条件が反映されていることを示す', async () => {

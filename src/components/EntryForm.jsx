@@ -2,10 +2,10 @@ import { CATEGORY_OPTIONS, PAYMENT_METHOD_OPTIONS, USER_OPTIONS } from '../const
 
 // 支出の入力フォーム。
 // 入力値は App が持つ（ページを切り替えても入力途中の内容が消えないようにするため）。
-function EntryForm({ values, onChange, onSubmit }) {
+function EntryForm({ values, onChange, onSubmit, onNotify }) {
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!values.amount) { alert('金額を入力してください。'); return; }
+    if (!values.amount) { onNotify('金額を入力してください。', 'error'); return; }
     onSubmit();
   };
 
