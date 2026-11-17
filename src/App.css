@@ -950,3 +950,139 @@ body.dialog-open {
     min-width: 70px;
   }
 }
+
+/* =================================== */
+/* 毎月の固定費ページ */
+/* =================================== */
+.fixed-section {
+  background-color: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  margin-bottom: 30px;
+}
+
+.fixed-section h3 {
+  margin: 0;
+}
+
+.fixed-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.fixed-total {
+  margin: 0;
+  color: #5f6368;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixed-total strong {
+  color: #202124;
+  font-size: 1.2rem;
+}
+
+.fixed-description,
+.fixed-notice {
+  margin: 8px 0 16px;
+  font-size: 0.9rem;
+  color: #5f6368;
+  line-height: 1.6;
+}
+
+.fixed-notice code {
+  background-color: #f1f3f4;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.fixed-add-button {
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 12px;
+  border: 1px dashed #1a73e8;
+  border-radius: 12px;
+  background-color: #f8fbff;
+  color: #1967d2;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .fixed-add-button:hover { background-color: #e8f0fe; }
+}
+
+.fixed-editor {
+  margin-bottom: 12px;
+}
+
+.fixed-list .fixed-editor {
+  margin-bottom: 0;
+}
+
+.fixed-card-name {
+  font-weight: 600;
+  color: #202124;
+  word-break: break-word;
+}
+
+.fixed-card-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fixed-card-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  /* ボタンの余白ぶん外へ出し、金額の右端と絵文字の右端を揃える */
+  margin: 0 -8px -8px 0;
+}
+
+.fixed-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fixed-button {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.fixed-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fixed-button--primary {
+  background-color: #1a73e8;
+  border: 1px solid #1a73e8;
+  color: white;
+}
+
+.fixed-button--secondary {
+  background-color: white;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+}
+
+@media (max-width: 768px) {
+  .fixed-section {
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .fixed-editor-actions .fixed-button {
+    flex: 1;
+  }
+}

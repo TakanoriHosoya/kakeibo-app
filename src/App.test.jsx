@@ -35,14 +35,22 @@ afterEach(() => {
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// 削除時に呼ばれる API。行ズレ検知で中断されたら呼ばれないことを確かめる
+// 書き込み系の API。呼ばれたか・何を渡されたかを確かめる
 let batchUpdate;
+let append;
+let update;
 
 // 保存済みトークンがある状態を作る。
 // expiresAt で期限切れの状態を、rowOverride で「シート側の行が変わっている」状態を作れる。
-const signedIn = ({ expiresAt = Date.now() + HOUR_MS, rowOverride = null } = {}) => {
+// fixedValues を渡すと fixed シート（固定費）がある状態になる。null ならシート自体が無い。
+const signedIn = ({ expiresAt = Date.now() + HOUR_MS, rowOverride = null, fixedValues = null } = {}) => {
   sessionStorage.setItem('googleAuthToken', JSON.stringify({ access_token: 'dummy-token', expiresAt }));
   batchUpdate = vi.fn(async () => ({}));
+  append = vi.fn(async () => ({}));
+  update = vi.fn(async () => ({}));
+
+  const sheets = [{ properties: { sheetId: 42, title: 'data' } }];
+  if (fixedValues) sheets.push({ properties: { sheetId: 7, title: 'fixed' } });
 
   window.gapi = {
     load: (_name, { callback }) => callback(),
@@ -51,10 +59,18 @@ const signedIn = ({ expiresAt = Date.now() + HOUR_MS, rowOverride = null } = {})
       setToken: () => {},
       sheets: {
         spreadsheets: {
-          get: async () => ({ result: { sheets: [{ properties: { sheetId: 42, title: 'data' } }] } }),
+          get: async () => ({ result: { sheets } }),
           batchUpdate,
           values: {
+            append,
+            update,
             get: async ({ range }) => {
+              if (range.startsWith('fixed!')) {
+                const singleFixedRow = range.match(/!A(\d+):E\d+$/);
+                if (!singleFixedRow) return { result: { values: fixedValues } };
+                return { result: { values: [fixedValues[Number(singleFixedRow[1]) - 1]] } };
+              }
+
               // 単一行の取得（書き込み前の照合）と全件取得を range で見分ける
               const singleRow = range.match(/!A(\d+):G\d+$/);
               if (!singleRow) return { result: { values: SHEET_VALUES } };
@@ -299,4 +315,102 @@ test('絞り込み中はグラフにその条件が反映されていること�
   fireEvent.click(screen.getByRole('button', { name: 'グラフ' }));
 
   expect(screen.getByText(/絞り込み中（食費・日用品）/)).toBeInTheDocument();
+});
+
+// --- 毎月の固定費ページ ---
+
+const FIXED_VALUES = [
+  ['カテゴリ', '支払方法', '利用者', '金額', '内容'],
+  ['家賃', '銀行引き落とし', '家族', '90000', '今月分の家賃・駐車場'],
+  ['', '', '', '', ''],
+  ['趣味・娯楽', 'Amazonカード', 'パパ', '980', '少年ジャンプ'],
+];
+
+const openFixedPage = async () => {
+  await screen.findByText('スーパー');
+  fireEvent.click(screen.getByRole('button', { name: '固定費' }));
+};
+
+test('固定費ページに fixed シートの項目と合計が出て、空行は飛ばされる', async () => {
+  signedIn({ fixedValues: FIXED_VALUES });
+  renderApp();
+  await openFixedPage();
+
+  expect(screen.getByText('今月分の家賃・駐車場')).toBeInTheDocument();
+  expect(screen.getByText('少年ジャンプ')).toBeInTheDocument();
+  expect(document.querySelectorAll('.fixed-list .record-card')).toHaveLength(2);
+  expect(document.querySelector('.fixed-total').textContent).toContain('2件');
+  expect(document.querySelector('.fixed-total').textContent).toContain('90,980円');
+  // 設定ページなので月別の記録一覧は出さない
+  expect(screen.queryByText('スーパー')).not.toBeInTheDocument();
+});
+
+test('fixed シートが無ければ作り方を案内する', async () => {
+  signedIn();
+  renderApp();
+  await openFixedPage();
+
+  expect(screen.getByText(/setupFixedSheet/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '再読み込み' })).toBeInTheDocument();
+});
+
+test('固定費を追加すると fixed シートに1行書き込まれる', async () => {
+  signedIn({ fixedValues: FIXED_VALUES });
+  renderApp();
+  await openFixedPage();
+
+  fireEvent.click(screen.getByRole('button', { name: '＋ 固定費を追加' }));
+  fireEvent.change(screen.getByLabelText('内容'), { target: { value: 'Netflix' } });
+  fireEvent.change(screen.getByLabelText('金額 (円)'), { target: { value: '1490' } });
+  fireEvent.click(screen.getByRole('button', { name: '追加する' }));
+
+  expect(await screen.findByText('固定費を追加しました')).toBeInTheDocument();
+  expect(append).toHaveBeenCalledTimes(1);
+  const request = append.mock.calls[0][0];
+  expect(request.range).toBe('fixed!A1');
+  // 既定は 食費・銀行引き落とし・家族
+  expect(request.resource.values).toEqual([['食費', '銀行引き落とし', '家族', '1490', 'Netflix']]);
+});
+
+test('金額が空のままでは固定費を追加しない', async () => {
+  signedIn({ fixedValues: FIXED_VALUES });
+  renderApp();
+  await openFixedPage();
+
+  fireEvent.click(screen.getByRole('button', { name: '＋ 固定費を追加' }));
+  fireEvent.change(screen.getByLabelText('内容'), { target: { value: 'Netflix' } });
+  fireEvent.click(screen.getByRole('button', { name: '追加する' }));
+
+  expect(await screen.findByText(/金額を1円以上/)).toBeInTheDocument();
+  expect(append).not.toHaveBeenCalled();
+});
+
+test('固定費を編集すると、その行が書き換わる', async () => {
+  signedIn({ fixedValues: FIXED_VALUES });
+  renderApp();
+  await openFixedPage();
+
+  fireEvent.click(screen.getByRole('button', { name: '少年ジャンプを編集' }));
+  fireEvent.change(screen.getByLabelText('金額 (円)'), { target: { value: '1080' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存する' }));
+
+  expect(await screen.findByText('固定費を更新しました')).toBeInTheDocument();
+  const request = update.mock.calls[0][0];
+  // 見出し・家賃・空行の次なので4行目
+  expect(request.range).toBe('fixed!A4:E4');
+  expect(request.resource.values).toEqual([['趣味・娯楽', 'Amazonカード', 'パパ', '1080', '少年ジャンプ']]);
+});
+
+test('固定費を削除すると fixed シートの該当行が消える', async () => {
+  signedIn({ fixedValues: FIXED_VALUES });
+  renderApp();
+  await openFixedPage();
+
+  fireEvent.click(screen.getByRole('button', { name: '少年ジャンプを削除' }));
+  fireEvent.click(await screen.findByRole('button', { name: '削除する' }));
+
+  expect(await screen.findByText('固定費を削除しました')).toBeInTheDocument();
+  const range = batchUpdate.mock.calls[0][0].resource.requests[0].deleteDimension.range;
+  // data シート（42）ではなく fixed シート（7）の4行目
+  expect(range).toEqual({ sheetId: 7, dimension: 'ROWS', startIndex: 3, endIndex: 4 });
 });

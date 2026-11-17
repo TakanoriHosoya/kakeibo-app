@@ -1,6 +1,6 @@
 // 見た目の確認用。Google 認証なしでモックデータのまま画面を描画する。
 // 本番のビルドには含まれない（index.html から参照していない）。
-//   ?page=Home|History|Graph   最初に開くページ
+//   ?page=Home|History|Graph|Fixed   最初に開くページ
 //   ?overlay=toast|dialog      通知・確認ダイアログを重ねて表示
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -24,6 +24,14 @@ const SHEET_VALUES = [
   ['2026-01-01T00:00:00.000Z', lastMonth, '家賃', '楽天カード', '家族', '98000', '先月分'],
 ];
 
+const FIXED_VALUES = [
+  ['カテゴリ', '支払方法', '利用者', '金額', '内容'],
+  ['家賃', '銀行引き落とし', '家族', '90000', '今月分の家賃・駐車場'],
+  ['保険', '銀行引き落とし', '家族', '13581', '学資：圭佑'],
+  ['習い事', '現金', '家族', '5000', 'ピアノ：芽衣'],
+  ['趣味・娯楽', 'Amazonカード', 'パパ', '980', '少年ジャンプ'],
+];
+
 window.gapi = {
   load: (_name, { callback }) => callback(),
   client: {
@@ -31,10 +39,13 @@ window.gapi = {
     setToken: () => {},
     sheets: {
       spreadsheets: {
-        get: async () => ({ result: { sheets: [{ properties: { sheetId: 42, title: 'data' } }] } }),
+        get: async () => ({ result: { sheets: [
+          { properties: { sheetId: 42, title: 'data' } },
+          { properties: { sheetId: 7, title: 'fixed' } },
+        ] } }),
         batchUpdate: async () => ({}),
         values: {
-          get: async () => ({ result: { values: SHEET_VALUES } }),
+          get: async ({ range }) => ({ result: { values: range.startsWith('fixed!') ? FIXED_VALUES : SHEET_VALUES } }),
           append: async () => ({}),
           update: async () => ({}),
         },
@@ -64,7 +75,7 @@ const clickWhenReady = (selector, matcher) => {
 
 // 指定されたページのタブを押しておく
 if (page && page !== 'Home') {
-  const label = { History: '履歴', Graph: 'グラフ' }[page];
+  const label = { History: '履歴', Graph: 'グラフ', Fixed: '固定費' }[page];
   clickWhenReady('.main-nav button', b => b.textContent === label);
 }
 

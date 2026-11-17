@@ -13,7 +13,21 @@ import {
   countActiveFilters,
   rowsMatch,
 } from './lib/records';
-import { loadGapi, initClient, fetchRecords, fetchRow, appendRecord, updateRecord, deleteRecord } from './lib/sheets';
+import {
+  loadGapi,
+  initClient,
+  fetchRecords,
+  fetchRow,
+  appendRecord,
+  updateRecord,
+  deleteRecord,
+  fetchFixedExpenses,
+  fetchFixedRow,
+  appendFixedExpense,
+  updateFixedExpense,
+  deleteFixedExpense,
+} from './lib/sheets';
+import { buildFixedRow, parseFixedRow, fixedRowsMatch } from './lib/fixedExpenses';
 import { saveToken, loadToken, clearToken } from './lib/auth';
 import EntryForm from './components/EntryForm';
 import SummaryTable from './components/SummaryTable';
@@ -21,6 +35,7 @@ import GraphSection from './components/GraphSection';
 import MonthNavigator from './components/MonthNavigator';
 import FilterPanel from './components/FilterPanel';
 import RecordsTable from './components/RecordsTable';
+import FixedExpensesPage from './components/FixedExpensesPage';
 import Toast from './components/Toast';
 import ConfirmDialog from './components/ConfirmDialog';
 import './App.css';
@@ -45,6 +60,10 @@ function App() {
   const [visibleCategories, setVisibleCategories] = useState(new Set(CATEGORY_OPTIONS));
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [fixedExpenses, setFixedExpenses] = useState([]);
+  // 'loading' | 'ready' | 'missing'（fixed シートが無い） | 'error'
+  const [fixedStatus, setFixedStatus] = useState('loading');
+  const [fixedDeleteTarget, setFixedDeleteTarget] = useState(null);
 
   // --- 画面内の通知 ---
   // id を付けて毎回別オブジェクトにする（同じ文言が続いても表示し直すため）。
@@ -87,6 +106,8 @@ function App() {
     clearToken();
     setIsLoggedIn(false);
     setAllRecords([]);
+    setFixedExpenses([]);
+    setFixedStatus('loading');
   };
 
   // 期限切れのトークンで API を叩くと 401 が返るだけなので、その前に再ログインへ誘導する
@@ -100,7 +121,7 @@ function App() {
   const signIn = async (token) => {
     await initClient(token);
     setIsLoggedIn(true);
-    await reloadRecords();
+    await Promise.all([reloadRecords(), reloadFixedExpenses()]);
   };
 
   const login = useGoogleLogin({
@@ -120,16 +141,37 @@ function App() {
     } catch (err) { handleApiError(err); }
   };
 
+  const reloadFixedExpenses = async () => {
+    try {
+      const items = await fetchFixedExpenses();
+      setFixedExpenses(items || []);
+      setFixedStatus(items ? 'ready' : 'missing');
+    } catch (err) {
+      setFixedStatus('error');
+      handleApiError(err);
+    }
+  };
+
   // 対象行が画面に表示している内容のままかを確かめる。
   // ずれていたら書き込まずに中断し、最新の状態を読み込み直す。
-  const isRowUnchanged = async (record) => {
-    const currentRow = await fetchRow(record.rowNumber);
-    if (rowsMatch(currentRow, record.data)) return true;
+  // 既定は data シートの記録。固定費のときは照合方法と読み直し先を差し替える。
+  const isRowUnchanged = async (record, {
+    fetchCurrentRow = fetchRow,
+    matches = rowsMatch,
+    reload = reloadRecords,
+  } = {}) => {
+    const currentRow = await fetchCurrentRow(record.rowNumber);
+    if (matches(currentRow, record.data)) return true;
 
     showToast('他の端末で変更されたため操作を中止しました。最新の状態に更新します。', 'error');
-    await reloadRecords();
+    await reload();
     return false;
   };
+  const isFixedRowUnchanged = (item) => isRowUnchanged(item, {
+    fetchCurrentRow: fetchFixedRow,
+    matches: fixedRowsMatch,
+    reload: reloadFixedExpenses,
+  });
 
   const handleAddRecord = async () => {
     if (!hasValidToken()) return;
@@ -176,6 +218,54 @@ function App() {
       showToast('削除しました');
       await reloadRecords();
     } catch (error) { handleApiError(error); }
+  };
+
+  // --- 毎月の固定費 ---
+  // 追加・更新は保存できたかを返す（FixedExpensesPage が入力カードを閉じる判断に使う）
+
+  const handleAddFixedExpense = async (values) => {
+    if (!hasValidToken()) return false;
+
+    try {
+      await appendFixedExpense(buildFixedRow(values));
+      showToast('固定費を追加しました');
+      await reloadFixedExpenses();
+      return true;
+    } catch (err) {
+      handleApiError(err);
+      return false;
+    }
+  };
+
+  const handleUpdateFixedExpense = async (item, values) => {
+    if (!hasValidToken()) return false;
+
+    try {
+      // 中断時に true を返す理由は handleUpdateRecord と同じ
+      if (!await isFixedRowUnchanged(item)) return true;
+
+      await updateFixedExpense(item.rowNumber, buildFixedRow(values));
+      showToast('固定費を更新しました');
+      await reloadFixedExpenses();
+      return true;
+    } catch (err) {
+      handleApiError(err);
+      return false;
+    }
+  };
+
+  const confirmDeleteFixedExpense = async () => {
+    const item = fixedDeleteTarget;
+    setFixedDeleteTarget(null);
+    if (!item || !hasValidToken()) return;
+
+    try {
+      if (!await isFixedRowUnchanged(item)) return;
+
+      await deleteFixedExpense(item.rowNumber);
+      showToast('固定費を削除しました');
+      await reloadFixedExpenses();
+    } catch (err) { handleApiError(err); }
   };
 
   // --- 画面の操作 ---
@@ -241,6 +331,7 @@ function App() {
             <button onClick={() => setPage('Home')} className={page === 'Home' ? 'active' : ''}>Home</button>
             <button onClick={() => setPage('History')} className={page === 'History' ? 'active' : ''}>履歴</button>
             <button onClick={() => setPage('Graph')} className={page === 'Graph' ? 'active' : ''}>グラフ</button>
+            <button onClick={() => setPage('Fixed')} className={page === 'Fixed' ? 'active' : ''}>固定費</button>
           </nav>
 
           <main>
@@ -270,27 +361,41 @@ function App() {
               />
             )}
 
-            {/* 月別リスト（全ページ共通） */}
-            <section className="records-section">
-              <MonthNavigator
-                viewingDate={viewingDate}
-                onPrevMonth={() => changeMonth(-1)}
-                onNextMonth={() => changeMonth(1)}
+            {page === 'Fixed' && (
+              <FixedExpensesPage
+                items={fixedExpenses}
+                status={fixedStatus}
+                onAdd={handleAddFixedExpense}
+                onUpdate={handleUpdateFixedExpense}
+                onDelete={setFixedDeleteTarget}
+                onReload={reloadFixedExpenses}
+                onNotify={showToast}
               />
-              <FilterPanel
-                filters={filters}
-                onChange={changeFilter}
-                onReset={resetFilters}
-                resultCount={filteredRecords.length}
-                resultTotal={filteredTotal}
-              />
-              <RecordsTable
-                records={filteredRecords}
-                hasActiveFilters={activeFilterCount > 0}
-                onSave={handleUpdateRecord}
-                onDelete={handleDeleteRecord}
-              />
-            </section>
+            )}
+
+            {/* 月別リスト（固定費の設定ページ以外で共通） */}
+            {page !== 'Fixed' && (
+              <section className="records-section">
+                <MonthNavigator
+                  viewingDate={viewingDate}
+                  onPrevMonth={() => changeMonth(-1)}
+                  onNextMonth={() => changeMonth(1)}
+                />
+                <FilterPanel
+                  filters={filters}
+                  onChange={changeFilter}
+                  onReset={resetFilters}
+                  resultCount={filteredRecords.length}
+                  resultTotal={filteredTotal}
+                />
+                <RecordsTable
+                  records={filteredRecords}
+                  hasActiveFilters={activeFilterCount > 0}
+                  onSave={handleUpdateRecord}
+                  onDelete={handleDeleteRecord}
+                />
+              </section>
+            )}
           </main>
         </>
       )}
@@ -304,6 +409,18 @@ function App() {
         confirmLabel="削除する"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={fixedDeleteTarget !== null}
+        title="この固定費を削除しますか？"
+        description={fixedDeleteTarget && (() => {
+          const { description, amount } = parseFixedRow(fixedDeleteTarget.data);
+          return `${description}　${Number(amount || 0).toLocaleString()}円（次回の登録から記録されなくなります）`;
+        })()}
+        confirmLabel="削除する"
+        onConfirm={confirmDeleteFixedExpense}
+        onCancel={() => setFixedDeleteTarget(null)}
       />
     </div>
   );

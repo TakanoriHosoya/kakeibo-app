@@ -56,7 +56,7 @@ const formatDate = (value) => new Date(value).toLocaleDateString('ja-JP', { mont
 const formatAmount = (value) => `${Number(value || 0).toLocaleString()} 円`;
 
 // 表示中の月の記録一覧。行の編集状態はこのコンポーネント内で完結する
-// （このセクションはページを切り替えても表示され続けるため、状態が消えることはない）。
+// （Home・履歴・グラフの間で切り替えても表示され続けるので状態は残る。固定費ページへ移ると閉じる）。
 // スマホでは表だと7列が収まらず横スクロールが要るので、1件1カードで並べる。
 function RecordsTable({ records, hasActiveFilters, onSave, onDelete }) {
   const isMobile = useIsMobile();
